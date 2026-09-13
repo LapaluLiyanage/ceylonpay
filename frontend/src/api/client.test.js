@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { request, setAuthToken, ApiError } from './client';
+import { request, setAuthToken, setUnauthorizedHandler, ApiError } from './client';
 
 describe('request', () => {
   beforeEach(() => {
     setAuthToken(null);
+    setUnauthorizedHandler(null);
     global.fetch = vi.fn();
   });
 
@@ -62,5 +63,36 @@ describe('request', () => {
     const [, options] = global.fetch.mock.calls[0];
     expect(options.body).toBe(JSON.stringify({ amount: 500 }));
     expect(options.method).toBe('POST');
+  });
+
+  it('invokes the unauthorized handler on a 401 from a protected endpoint', async () => {
+    setAuthToken('abc123');
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    global.fetch.mockResolvedValue({ ok: false, status: 401, text: async () => '{"error":"Unauthorized"}' });
+
+    await expect(request('/api/wallet/balance')).rejects.toBeInstanceOf(ApiError);
+
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not invoke the unauthorized handler on a 401 from the login endpoint', async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    global.fetch.mockResolvedValue({ ok: false, status: 401, text: async () => '{"error":"Wrong phone number or password"}' });
+
+    await expect(request('/api/auth/login', { method: 'POST', body: {} })).rejects.toBeInstanceOf(ApiError);
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('does not invoke the unauthorized handler on a 401 from the register endpoint', async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    global.fetch.mockResolvedValue({ ok: false, status: 401, text: async () => '{"error":"Unauthorized"}' });
+
+    await expect(request('/api/auth/register', { method: 'POST', body: {} })).rejects.toBeInstanceOf(ApiError);
+
+    expect(handler).not.toHaveBeenCalled();
   });
 });

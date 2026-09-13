@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { digitsOnly, groupPhone, toDisplayPhone, toApiPhone, phoneError } from './phone';
+import { digitsOnly, groupPhone, toDisplayPhone, toApiPhone, phoneError, normalizeStoredPhone } from './phone';
 
 describe('digitsOnly', () => {
   it('strips non-digit characters', () => {
@@ -48,5 +48,19 @@ describe('phoneError', () => {
 
   it('accepts a valid 9-digit number starting with 7', () => {
     expect(phoneError('771234567')).toBe('');
+  });
+});
+
+describe('normalizeStoredPhone', () => {
+  it('strips a leading 0 prefix', () => {
+    expect(normalizeStoredPhone('0771234567')).toBe('771234567');
+  });
+
+  it('strips a +94 prefix', () => {
+    expect(normalizeStoredPhone('+94771234567')).toBe('771234567');
+  });
+
+  it('leaves a bare 9-digit number unchanged', () => {
+    expect(normalizeStoredPhone('771234567')).toBe('771234567');
   });
 });

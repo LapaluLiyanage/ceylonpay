@@ -1,4 +1,5 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const UNAUTHENTICATED_PATHS = ['/api/auth/login', '/api/auth/register'];
 
 let authToken = null;
 let onUnauthorized = null;
@@ -31,7 +32,7 @@ export async function request(path, { method = 'GET', body } = {}) {
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
 
-  if (response.status === 401 && onUnauthorized) {
+  if (response.status === 401 && onUnauthorized && !UNAUTHENTICATED_PATHS.includes(path)) {
     onUnauthorized();
   }
 

@@ -1127,8 +1127,8 @@ git commit -m "Add AuthContext: token persistence, login/register/logout, on-loa
 - Create: `frontend/src/components/ProtectedRoute.jsx`
 
 **Interfaces:**
-- Produces every shared visual primitive later pages import: `Button`, `FieldLabel`/`TextField`/`FieldError`/`PhoneField`, `AuthErrorBanner`, `AuthSplitLayout`, `AppShell`, `SkeletonRows`/`ActivityErrorState`/`ActivityEmptyState`/`TransactionRow`, `ProtectedRoute`.
-- Consumes: `useAuth()` from Task 8 (in `AppShell` and `ProtectedRoute`).
+- Produces every shared visual primitive later pages import: `Button`, `FieldLabel`/`TextField`/`FieldError`/`PhoneField`, `AuthErrorBanner`, `AuthSplitLayout`, `AppShell`, `SkeletonRows`/`ActivityErrorState`/`ActivityEmptyState`/`TransactionRow`/`timestampLabel`/`rowFor`, `ProtectedRoute`. `rowFor(tx)` and `timestampLabel(iso)` live here (not duplicated in Dashboard/History) since both pages need identical transaction-row formatting.
+- Consumes: `useAuth()` from Task 8 (in `AppShell` and `ProtectedRoute`); `formatMoney` from Task 4 and `toDisplayPhone` from Task 5 (in `Activity.jsx`, for `rowFor`).
 
 No automated tests — these are pure presentational components; their correctness is what the live browser verification in Task 16 checks.
 
@@ -1442,6 +1442,9 @@ export function AppShell({ children }) {
 - [ ] **Step 6: Write `frontend/src/components/Activity.jsx`**
 
 ```jsx
+import { formatMoney } from '../utils/money';
+import { toDisplayPhone } from '../utils/phone';
+
 export function SkeletonRows({ count = 3, height = 62 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1547,6 +1550,22 @@ export function TransactionRow({ direction, title, subtitle, amountText, stateLa
       </div>
     </div>
   );
+}
+
+export function timestampLabel(iso) {
+  return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+export function rowFor(tx) {
+  const isOut = tx.direction === 'SENT';
+  return {
+    id: tx.id,
+    direction: tx.direction,
+    stateLabel: isOut ? 'Sent' : 'Received',
+    title: isOut ? `To ${tx.counterpartyName}` : `From ${tx.counterpartyName}`,
+    subtitle: `${toDisplayPhone(tx.counterpartyPhone.replace(/^\+94/, ''))} · ${timestampLabel(tx.timestamp)} · ${tx.id}`,
+    amountText: (isOut ? '− ' : '+ ') + formatMoney(tx.amount),
+  };
 }
 ```
 
@@ -1897,8 +1916,8 @@ git commit -m "Add Register page"
 - Create: `frontend/src/pages/Dashboard.jsx`
 
 **Interfaces:**
-- Consumes: `getBalance()`, `getHistory()`, `formatMoney()`, `toDisplayPhone()`, `AppShell`, `SkeletonRows`/`ActivityErrorState`/`ActivityEmptyState`/`TransactionRow`, `Button`.
-- The backend's `TransactionHistoryResponse.counterpartyPhone` is already in `+94XXXXXXXXX` form (it's `User.phone`, stored in whatever format registration used — for users registered through this same frontend, that's `+94XXXXXXXXX`). `toDisplayPhone` expects raw digits, so strip a leading `+94` before calling it.
+- Consumes: `getBalance()`, `getHistory()`, `formatMoney()`, `AppShell`, `SkeletonRows`/`ActivityErrorState`/`ActivityEmptyState`/`TransactionRow`/`rowFor` (from `components/Activity.jsx`, not redefined here), `Button`.
+- The backend's `TransactionHistoryResponse.counterpartyPhone` is already in `+94XXXXXXXXX` form; `rowFor` (in `Activity.jsx`) handles stripping that prefix before display — this page just calls `rowFor(tx)`.
 
 - [ ] **Step 1: Write `frontend/src/pages/Dashboard.jsx`**
 
@@ -1909,25 +1928,8 @@ import { AppShell } from '../components/AppShell';
 import { getBalance } from '../api/wallet';
 import { getHistory } from '../api/transfer';
 import { formatMoney } from '../utils/money';
-import { toDisplayPhone } from '../utils/phone';
-import { SkeletonRows, ActivityErrorState, ActivityEmptyState, TransactionRow } from '../components/Activity';
+import { SkeletonRows, ActivityErrorState, ActivityEmptyState, TransactionRow, rowFor } from '../components/Activity';
 import { Button } from '../components/Button';
-
-function timestampLabel(iso) {
-  return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
-}
-
-function rowFor(tx) {
-  const isOut = tx.direction === 'SENT';
-  return {
-    id: tx.id,
-    direction: tx.direction,
-    stateLabel: isOut ? 'Sent' : 'Received',
-    title: isOut ? `To ${tx.counterpartyName}` : `From ${tx.counterpartyName}`,
-    subtitle: `${toDisplayPhone(tx.counterpartyPhone.replace(/^\+94/, ''))} · ${timestampLabel(tx.timestamp)}`,
-    amountText: (isOut ? '− ' : '+ ') + formatMoney(tx.amount),
-  };
-}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -2640,7 +2642,7 @@ git commit -m "Add Transfer page (two-stage confirm, three distinct failure stat
 - Create: `frontend/src/pages/History.jsx`
 
 **Interfaces:**
-- Consumes: `getHistory()`, `formatMoney()`, `toDisplayPhone()`, `AppShell`, `SkeletonRows`/`ActivityErrorState`/`ActivityEmptyState`/`TransactionRow`.
+- Consumes: `getHistory()`, `AppShell`, `SkeletonRows`/`ActivityErrorState`/`ActivityEmptyState`/`TransactionRow`/`rowFor` (from `components/Activity.jsx`, not redefined here).
 
 - [ ] **Step 1: Write `frontend/src/pages/History.jsx`**
 
@@ -2649,25 +2651,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { getHistory } from '../api/transfer';
-import { formatMoney } from '../utils/money';
-import { toDisplayPhone } from '../utils/phone';
-import { SkeletonRows, ActivityErrorState, ActivityEmptyState, TransactionRow } from '../components/Activity';
-
-function timestampLabel(iso) {
-  return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
-}
-
-function rowFor(tx) {
-  const isOut = tx.direction === 'SENT';
-  return {
-    id: tx.id,
-    direction: tx.direction,
-    stateLabel: isOut ? 'Sent' : 'Received',
-    title: isOut ? `To ${tx.counterpartyName}` : `From ${tx.counterpartyName}`,
-    subtitle: `${toDisplayPhone(tx.counterpartyPhone.replace(/^\+94/, ''))} · ${timestampLabel(tx.timestamp)} · ${tx.id}`,
-    amountText: (isOut ? '− ' : '+ ') + formatMoney(tx.amount),
-  };
-}
+import { SkeletonRows, ActivityErrorState, ActivityEmptyState, TransactionRow, rowFor } from '../components/Activity';
 
 export default function History() {
   const navigate = useNavigate();

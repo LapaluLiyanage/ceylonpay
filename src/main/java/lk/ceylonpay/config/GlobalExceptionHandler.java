@@ -1,6 +1,8 @@
 package lk.ceylonpay.config;
 
+import lk.ceylonpay.exception.InsufficientBalanceException;
 import lk.ceylonpay.exception.InvalidCredentialsException;
+import lk.ceylonpay.exception.InvalidTransferException;
 import lk.ceylonpay.exception.UserAlreadyExistsException;
 import lk.ceylonpay.exception.WalletNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -26,6 +28,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(WalletNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleWalletNotFound(WalletNotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(InsufficientBalanceException.class)
+    public ResponseEntity<Map<String, String>> handleInsufficientBalance(InsufficientBalanceException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidTransferException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidTransfer(InvalidTransferException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
     }
 
 }

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { login as apiLogin, register as apiRegister } from '../api/auth';
 import { getBalance } from '../api/wallet';
 import { setAuthToken, ApiError } from '../api/client';
+import { toApiPhone } from '../utils/phone';
 
 const AuthContext = createContext(null);
 
@@ -51,13 +52,13 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function login({ phone, password }) {
-    const data = await apiLogin({ phone, password });
+    const data = await apiLogin({ phone: toApiPhone(phone), password });
     persistSession(data.token, { id: data.userId, name: data.name, phone });
     return data;
   }
 
   async function register({ name, phone, nic, password }) {
-    const data = await apiRegister({ name, phone, nic, password });
+    const data = await apiRegister({ name, phone: toApiPhone(phone), nic, password });
     persistSession(data.token, { id: data.userId, name: data.name, phone });
     return data;
   }

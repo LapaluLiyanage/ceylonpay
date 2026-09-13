@@ -15,6 +15,10 @@ export function toApiPhone(raw) {
   return '+94' + digitsOnly(raw);
 }
 
+export function normalizeStoredPhone(raw) {
+  return String(raw || '').replace(/\D/g, '').slice(-9);
+}
+
 export function phoneError(raw) {
   const d = digitsOnly(raw);
   if (!d) return 'Enter a phone number.';

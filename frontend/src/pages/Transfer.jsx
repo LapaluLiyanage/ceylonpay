@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
+import { timestampLabel } from '../components/Activity';
 import { getBalance } from '../api/wallet';
 import { transfer } from '../api/transfer';
 import { ApiError } from '../api/client';
@@ -18,6 +19,7 @@ const FAIL_COPY = {
 export default function Transfer() {
   const navigate = useNavigate();
   const [balance, setBalance] = useState(0);
+  const [balanceError, setBalanceError] = useState(false);
   const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState('');
   const [phoneErr, setPhoneErr] = useState('');
@@ -31,7 +33,7 @@ export default function Transfer() {
   useEffect(() => {
     getBalance()
       .then((data) => setBalance(data.balance))
-      .catch(() => {});
+      .catch(() => setBalanceError(true));
   }, []);
 
   function reviewTransfer(e) {
@@ -147,15 +149,21 @@ export default function Transfer() {
                   <FieldError>{amountErr}</FieldError>
                 </div>
 
-                <p style={{ margin: '16px 0 0', fontFamily: "'Space Grotesk',sans-serif", fontSize: 13, color: 'rgba(242,244,239,.4)' }}>
-                  Available {formatMoney(balance)}
-                </p>
+                {balanceError ? (
+                  <p style={{ margin: '16px 0 0', fontFamily: "'Space Grotesk',sans-serif", fontSize: 13, color: '#ff7a5c' }}>
+                    Couldn&apos;t load your balance — refresh the page to try again.
+                  </p>
+                ) : (
+                  <p style={{ margin: '16px 0 0', fontFamily: "'Space Grotesk',sans-serif", fontSize: 13, color: 'rgba(242,244,239,.4)' }}>
+                    Available {formatMoney(balance)}
+                  </p>
+                )}
 
                 <div style={{ display: 'flex', gap: 12, marginTop: 26, flexWrap: 'wrap' }}>
                   <Button type="button" variant="outlineLight" style={{ flex: '0 1 120px' }} onClick={() => navigate('/dashboard')}>
                     Cancel
                   </Button>
-                  <Button type="submit" variant="primary" style={{ flex: '1 1 180px', minWidth: 0 }}>
+                  <Button type="submit" variant="primary" style={{ flex: '1 1 180px', minWidth: 0 }} disabled={balanceError}>
                     Review transfer
                   </Button>
                 </div>
@@ -208,7 +216,7 @@ export default function Transfer() {
                 <Button variant="outlineDark" style={{ flex: '0 1 130px' }} onClick={() => setStage('form')}>
                   Edit
                 </Button>
-                <Button variant="dark" style={{ flex: '1 1 180px', minWidth: 0 }} onClick={confirmTransfer}>
+                <Button variant="dark" style={{ flex: '1 1 180px', minWidth: 0 }} onClick={confirmTransfer} disabled={busy}>
                   {busy ? 'Sending…' : `Send ${formatMoney(draft.amountValue)}`}
                 </Button>
               </div>
@@ -238,7 +246,7 @@ export default function Transfer() {
               </h2>
               <p style={{ margin: '0 0 24px', fontSize: 14, color: 'rgba(20,23,15,.6)' }}>
                 to {toDisplayPhone(draft.phoneDigits)} ·{' '}
-                {new Date(result.timestamp).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}
+                {timestampLabel(result.timestamp)}
               </p>
               <div style={{ borderRadius: 16, background: '#fff', overflow: 'hidden', textAlign: 'left', marginBottom: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: 16, borderBottom: '1px solid rgba(20,23,15,.08)' }}>
@@ -288,7 +296,7 @@ export default function Transfer() {
                 Nothing left your wallet. Balance {formatMoney(balance)}
               </p>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <Button variant="primary" style={{ flex: '1 1 170px', minWidth: 0 }} onClick={failPrimaryAction}>
+                <Button variant="primary" style={{ flex: '1 1 170px', minWidth: 0 }} onClick={failPrimaryAction} disabled={busy}>
                   {fail.label}
                 </Button>
                 <Button variant="outlineLight" style={{ flex: '1 1 140px', minWidth: 0 }} onClick={() => navigate('/dashboard')}>

@@ -1,5 +1,5 @@
 import { formatMoney } from '../utils/money';
-import { toDisplayPhone } from '../utils/phone';
+import { toDisplayPhone, normalizeStoredPhone } from '../utils/phone';
 
 export function SkeletonRows({ count = 3, height = 62 }) {
   return (
@@ -119,7 +119,7 @@ export function rowFor(tx) {
     direction: tx.direction,
     stateLabel: isOut ? 'Sent' : 'Received',
     title: isOut ? `To ${tx.counterpartyName}` : `From ${tx.counterpartyName}`,
-    subtitle: `${toDisplayPhone(tx.counterpartyPhone.replace(/^\+94/, ''))} · ${timestampLabel(tx.timestamp)} · ${tx.id}`,
+    subtitle: `${toDisplayPhone(normalizeStoredPhone(tx.counterpartyPhone))} · ${timestampLabel(tx.timestamp)} · ${tx.id}`,
     amountText: (isOut ? '− ' : '+ ') + formatMoney(tx.amount),
   };
 }

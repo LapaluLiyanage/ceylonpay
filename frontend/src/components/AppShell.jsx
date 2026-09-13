@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { toDisplayPhone } from '../utils/phone';
 
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Home' },
@@ -65,7 +66,7 @@ export function AppShell({ children }) {
             <div style={{ textAlign: 'right', lineHeight: 1.3 }}>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{user?.name}</div>
               <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 12, color: 'rgba(242,244,239,.45)' }}>
-                {user?.phone}
+                {user?.phone && toDisplayPhone(user.phone)}
               </div>
             </div>
             <div

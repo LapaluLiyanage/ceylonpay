@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
+import { timestampLabel } from '../components/Activity';
 import { deposit } from '../api/wallet';
+import { ApiError } from '../api/client';
 import { formatMoney, parseAmountInput } from '../utils/money';
 import { Button } from '../components/Button';
 import { FieldLabel, FieldError } from '../components/FormFields';
@@ -40,8 +42,12 @@ export default function Deposit() {
       setDepositedAmount(parsed.value);
       setStage('done');
       setAmount('');
-    } catch {
-      setNetError(true);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setNetError(true);
+      }
     } finally {
       setBusy(false);
     }
@@ -162,7 +168,7 @@ export default function Deposit() {
                 Added {formatMoney(depositedAmount)}
               </h2>
               <p style={{ margin: '0 0 24px', fontSize: 14, color: 'rgba(20,23,15,.6)' }}>
-                {new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}
+                {timestampLabel(new Date().toISOString())}
               </p>
               <div style={{ padding: 20, borderRadius: 16, background: '#fff', marginBottom: 24 }}>
                 <p style={{ margin: '0 0 6px', fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(20,23,15,.5)' }}>New balance</p>

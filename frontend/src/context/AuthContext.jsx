@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { login as apiLogin, register as apiRegister } from '../api/auth';
 import { getBalance } from '../api/wallet';
-import { setAuthToken, ApiError } from '../api/client';
+import { setAuthToken, setUnauthorizedHandler, ApiError } from '../api/client';
 import { toApiPhone } from '../utils/phone';
 
 const AuthContext = createContext(null);
@@ -13,7 +13,12 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
   const [user, setUser] = useState(() => {
     const raw = localStorage.getItem(USER_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   });
   const [isReady, setIsReady] = useState(false);
 
@@ -32,6 +37,10 @@ export function AuthProvider({ children }) {
     setToken(null);
     setUser(null);
   }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(clearSession);
+  }, [clearSession]);
 
   useEffect(() => {
     const existingToken = localStorage.getItem(TOKEN_KEY);

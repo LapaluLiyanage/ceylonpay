@@ -4,9 +4,11 @@ import lk.ceylonpay.dto.AuthResponse;
 import lk.ceylonpay.dto.LoginRequest;
 import lk.ceylonpay.dto.RegisterRequest;
 import lk.ceylonpay.entity.User;
+import lk.ceylonpay.entity.Wallet;
 import lk.ceylonpay.exception.InvalidCredentialsException;
 import lk.ceylonpay.exception.UserAlreadyExistsException;
 import lk.ceylonpay.repository.UserRepository;
+import lk.ceylonpay.repository.WalletRepository;
 import lk.ceylonpay.security.JwtUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +39,9 @@ class AuthServiceTest {
     @Mock
     private JwtUtil jwtUtil;
 
+    @Mock
+    private WalletRepository walletRepository;
+
     @InjectMocks
     private AuthService authService;
 
@@ -60,6 +65,27 @@ class AuthServiceTest {
         assertThat(response.userId()).isEqualTo("user-123");
         assertThat(response.name()).isEqualTo("Nimal Perera");
         verify(userRepository).save(argThat(user -> user.getPassword().equals("hashed-password")));
+    }
+
+    @Test
+    void registerCreatesAZeroBalanceWalletForTheNewUser() {
+        RegisterRequest request = new RegisterRequest("Nimal Perera", "0771234567", "991234567V", "raw-password");
+
+        when(userRepository.findByPhone("0771234567")).thenReturn(Optional.empty());
+        when(userRepository.findByNic("991234567V")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("raw-password")).thenReturn("hashed-password");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User saved = invocation.getArgument(0);
+            saved.setId("user-123");
+            return saved;
+        });
+        when(jwtUtil.generateToken("user-123")).thenReturn("jwt-token");
+
+        authService.register(request);
+
+        verify(walletRepository).save(argThat(wallet ->
+                wallet.getUser().getId().equals("user-123")
+                        && wallet.getBalance().compareTo(java.math.BigDecimal.ZERO) == 0));
     }
 
     @Test
@@ -119,14 +145,6 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(InvalidCredentialsException.class);
-    }
-
-    private static org.mockito.ArgumentMatcher<User> argThatPlaceholder() {
-        return null;
-    }
-
-    private static User argThat(java.util.function.Predicate<User> predicate) {
-        return org.mockito.ArgumentMatchers.argThat(predicate::test);
     }
 
 }

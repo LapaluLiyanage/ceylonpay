@@ -80,14 +80,16 @@ export default function Dashboard() {
                     </button>
                   </div>
                 )}
-                {!balanceLoading && !balanceError && (
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, fontWeight: 400, color: 'rgba(242,244,239,.5)' }}>Rs.</span>
-                    <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 'clamp(38px,6vw,56px)', fontWeight: 500, letterSpacing: '-.03em', lineHeight: 1 }}>
-                      {Number(balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                )}
+                {!balanceLoading && !balanceError && (() => {
+                  const [prefix, ...rest] = formatMoney(balance).split(' ');
+                  const number = rest.join(' ');
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, fontWeight: 400, color: 'rgba(242,244,239,.5)' }}>{prefix}</span>
+                      <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 'clamp(38px,6vw,56px)', fontWeight: 500, letterSpacing: '-.03em', lineHeight: 1 }}>{number}</span>
+                    </div>
+                  );
+                })()}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 999, background: '#1b1f1b', border: '1px solid rgba(255,255,255,.06)' }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#c9f24d' }} />

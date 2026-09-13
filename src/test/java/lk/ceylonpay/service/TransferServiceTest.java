@@ -55,7 +55,7 @@ class TransferServiceTest {
     }
 
     @Test
-    void transferMovesMoneyBetweenWalletsAndRecordsTransactionAndAuditLog() {
+    void transfer_shouldSucceed_whenBalanceSufficient() {
         Wallet senderWallet = walletWithBalance("wallet-sender", "user-sender", "500.0000");
         Wallet recipientWallet = walletWithBalance("wallet-recipient", "user-recipient", "100.0000");
         User recipientUser = recipientWallet.getUser();
@@ -81,7 +81,7 @@ class TransferServiceTest {
     }
 
     @Test
-    void transferShouldRollBackWhenBalanceInsufficient() {
+    void transfer_shouldThrow_whenBalanceInsufficient() {
         Wallet senderWallet = walletWithBalance("wallet-sender", "user-sender", "100.0000");
         Wallet recipientWallet = walletWithBalance("wallet-recipient", "user-recipient", "50.0000");
         User recipientUser = recipientWallet.getUser();
@@ -103,7 +103,7 @@ class TransferServiceTest {
     }
 
     @Test
-    void transferThrowsWhenRecipientPhoneNotRegistered() {
+    void transfer_shouldThrow_whenRecipientNotFound() {
         Wallet senderWallet = walletWithBalance("wallet-sender", "user-sender", "500.0000");
         when(walletRepository.findByUserId("user-sender")).thenReturn(Optional.of(senderWallet));
         when(userRepository.findByPhone("0799999999")).thenReturn(Optional.empty());
@@ -113,10 +113,11 @@ class TransferServiceTest {
                 .isInstanceOf(WalletNotFoundException.class);
 
         verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).saveAndFlush(any());
     }
 
     @Test
-    void transferThrowsWhenSendingToOwnWallet() {
+    void transfer_shouldThrow_whenTransferringToSelf() {
         Wallet senderWallet = walletWithBalance("wallet-sender", "user-sender", "500.0000");
         User senderUser = senderWallet.getUser();
         senderUser.setPhone("0711111111");

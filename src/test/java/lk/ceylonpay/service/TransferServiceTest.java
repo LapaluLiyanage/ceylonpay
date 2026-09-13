@@ -1,5 +1,6 @@
 package lk.ceylonpay.service;
 
+import lk.ceylonpay.dto.TransactionHistoryResponse;
 import lk.ceylonpay.dto.TransactionResponse;
 import lk.ceylonpay.entity.User;
 import lk.ceylonpay.entity.Wallet;
@@ -17,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -130,6 +132,65 @@ class TransferServiceTest {
                 .isInstanceOf(InvalidTransferException.class);
 
         verify(walletRepository, never()).save(any());
+    }
+
+    @Test
+    void getHistoryReturnsEmptyListWhenNoTransactions() {
+        Wallet myWallet = walletWithBalance("wallet-mine", "user-mine", "100.0000");
+        when(walletRepository.findByUserId("user-mine")).thenReturn(Optional.of(myWallet));
+        when(transactionRepository.findBySender_IdOrReceiver_IdOrderByCreatedAtDesc("wallet-mine", "wallet-mine"))
+                .thenReturn(List.of());
+
+        List<TransactionHistoryResponse> history = transferService.getHistory("user-mine");
+
+        assertThat(history).isEmpty();
+    }
+
+    @Test
+    void getHistoryLabelsATransactionAsSentWhenMyWalletIsTheSender() {
+        Wallet myWallet = walletWithBalance("wallet-mine", "user-mine", "100.0000");
+        Wallet theirWallet = walletWithBalance("wallet-theirs", "user-theirs", "50.0000");
+        theirWallet.getUser().setName("Recipient F");
+        theirWallet.getUser().setPhone("0799999998");
+
+        lk.ceylonpay.entity.Transaction txn = new lk.ceylonpay.entity.Transaction(
+                myWallet, theirWallet, new BigDecimal("200.00"), "SUCCESS");
+        txn.setId("txn-1");
+
+        when(walletRepository.findByUserId("user-mine")).thenReturn(Optional.of(myWallet));
+        when(transactionRepository.findBySender_IdOrReceiver_IdOrderByCreatedAtDesc("wallet-mine", "wallet-mine"))
+                .thenReturn(List.of(txn));
+
+        List<TransactionHistoryResponse> history = transferService.getHistory("user-mine");
+
+        assertThat(history).hasSize(1);
+        assertThat(history.get(0).direction()).isEqualTo("SENT");
+        assertThat(history.get(0).counterpartyName()).isEqualTo("Recipient F");
+        assertThat(history.get(0).counterpartyPhone()).isEqualTo("0799999998");
+        assertThat(history.get(0).amount()).isEqualByComparingTo("200.00");
+    }
+
+    @Test
+    void getHistoryLabelsATransactionAsReceivedWhenMyWalletIsTheReceiver() {
+        Wallet myWallet = walletWithBalance("wallet-mine", "user-mine", "100.0000");
+        Wallet theirWallet = walletWithBalance("wallet-theirs", "user-theirs", "50.0000");
+        theirWallet.getUser().setName("Sender C");
+        theirWallet.getUser().setPhone("0733333333");
+
+        lk.ceylonpay.entity.Transaction txn = new lk.ceylonpay.entity.Transaction(
+                theirWallet, myWallet, new BigDecimal("75.00"), "SUCCESS");
+        txn.setId("txn-2");
+
+        when(walletRepository.findByUserId("user-mine")).thenReturn(Optional.of(myWallet));
+        when(transactionRepository.findBySender_IdOrReceiver_IdOrderByCreatedAtDesc("wallet-mine", "wallet-mine"))
+                .thenReturn(List.of(txn));
+
+        List<TransactionHistoryResponse> history = transferService.getHistory("user-mine");
+
+        assertThat(history).hasSize(1);
+        assertThat(history.get(0).direction()).isEqualTo("RECEIVED");
+        assertThat(history.get(0).counterpartyName()).isEqualTo("Sender C");
+        assertThat(history.get(0).counterpartyPhone()).isEqualTo("0733333333");
     }
 
 }

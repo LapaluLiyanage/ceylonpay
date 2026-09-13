@@ -1,5 +1,6 @@
 package lk.ceylonpay.service;
 
+import lk.ceylonpay.dto.TransactionHistoryResponse;
 import lk.ceylonpay.dto.TransactionResponse;
 import lk.ceylonpay.entity.AuditLog;
 import lk.ceylonpay.entity.Transaction;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Service
 public class TransferService {
@@ -64,6 +66,30 @@ public class TransferService {
 
     private String buildAuditDetail(Wallet sender, Wallet receiver, BigDecimal amount) {
         return "Transfer of Rs. " + amount + " from wallet " + sender.getId() + " to wallet " + receiver.getId();
+    }
+
+    public List<TransactionHistoryResponse> getHistory(String userId) {
+        Wallet myWallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new WalletNotFoundException("Wallet not found"));
+
+        return transactionRepository
+                .findBySender_IdOrReceiver_IdOrderByCreatedAtDesc(myWallet.getId(), myWallet.getId())
+                .stream()
+                .map(txn -> toHistoryResponse(txn, myWallet.getId()))
+                .toList();
+    }
+
+    private TransactionHistoryResponse toHistoryResponse(Transaction txn, String myWalletId) {
+        boolean sent = txn.getSender().getId().equals(myWalletId);
+        Wallet counterpartyWallet = sent ? txn.getReceiver() : txn.getSender();
+        return new TransactionHistoryResponse(
+                txn.getId(),
+                sent ? "SENT" : "RECEIVED",
+                counterpartyWallet.getUser().getName(),
+                counterpartyWallet.getUser().getPhone(),
+                txn.getAmount(),
+                txn.getCreatedAt()
+        );
     }
 
 }

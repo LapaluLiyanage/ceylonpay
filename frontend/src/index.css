@@ -1,0 +1,59 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0b0c0b;
+  color: #f2f4ef;
+  font-family: Manrope, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: #c9f24d;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #dcff7a;
+}
+
+input {
+  font-family: inherit;
+}
+
+input::placeholder {
+  color: rgba(242, 244, 239, 0.3);
+}
+
+input:focus {
+  outline: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: 0;
+}
+
+@keyframes cp-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes cp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

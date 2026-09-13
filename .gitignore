@@ -35,6 +35,9 @@ build/
 ### Environment ###
 .env
 
+### Node ###
+node_modules/
+
 ### Locally-downloaded JDKs / IDE tooling artifacts ###
 oracleJdk-26/
 .github/modernize/

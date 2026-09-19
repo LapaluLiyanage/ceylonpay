@@ -1,0 +1,999 @@
+<title>The CeylonPay Ledger</title>
+<style>
+  :root {
+    --bg: #F0F2EC;
+    --surface: #FFFFFF;
+    --surface-2: #E6E9DF;
+    --ink: #1A1F1B;
+    --ink-soft: #4B554C;
+    --ink-faint: #7A8478;
+    --line: #CFD5C7;
+    --accent: #1F5D4E;
+    --accent-strong: #123D33;
+    --accent-tint: #DCE8E2;
+    --accent-2: #A9752E;
+    --accent-2-tint: #EFE1CC;
+    --danger: #A5402F;
+    --danger-tint: #F3E0DA;
+    --code-bg: #12211C;
+    --code-ink: #DCEAE2;
+    --code-ink-soft: #8FA79B;
+    --code-line: #24382F;
+    --code-key: #7FD9B8;
+    --code-str: #E3C27C;
+    --code-com: #5C7A6D;
+    --shadow: 0 1px 2px rgba(18,33,28,.06), 0 8px 24px -12px rgba(18,33,28,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12160F;
+      --surface: #191F16;
+      --surface-2: #222A1E;
+      --ink: #E7ECE1;
+      --ink-soft: #ABB6A2;
+      --ink-faint: #77826F;
+      --line: #303A2B;
+      --accent: #57C6A3;
+      --accent-strong: #86E3C4;
+      --accent-tint: #1E332C;
+      --accent-2: #D8A45B;
+      --accent-2-tint: #362A17;
+      --danger: #E38A78;
+      --danger-tint: #3A231E;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12160F;
+    --surface: #191F16;
+    --surface-2: #222A1E;
+    --ink: #E7ECE1;
+    --ink-soft: #ABB6A2;
+    --ink-faint: #77826F;
+    --line: #303A2B;
+    --accent: #57C6A3;
+    --accent-strong: #86E3C4;
+    --accent-tint: #1E332C;
+    --accent-2: #D8A45B;
+    --accent-2-tint: #362A17;
+    --danger: #E38A78;
+    --danger-tint: #3A231E;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.55);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'IBM Plex Serif', Georgia, serif;
+    color: var(--ink);
+    text-wrap: balance;
+    line-height: 1.22;
+    margin: 0;
+  }
+  code, pre, .mono, .tag {
+    font-family: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  a { color: var(--accent); }
+  p { margin: 0; }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 24px 120px;
+  }
+
+  /* ---------- Header ---------- */
+  .doc-header {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-bottom: 36px;
+    margin-bottom: 44px;
+    border-bottom: 1px solid var(--line);
+  }
+  .doc-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .doc-eyebrow::before {
+    content: "";
+    width: 22px;
+    height: 1px;
+    background: var(--accent);
+    display: inline-block;
+  }
+  .doc-title {
+    font-size: clamp(32px, 5vw, 48px);
+    font-weight: 600;
+    letter-spacing: -.01em;
+  }
+  .doc-sub {
+    max-width: 62ch;
+    color: var(--ink-soft);
+    font-size: 17px;
+  }
+  .stack-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    background: var(--surface-2);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- Layout ---------- */
+  .layout {
+    display: grid;
+    grid-template-columns: 230px minmax(0,1fr);
+    gap: 56px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; gap: 28px; }
+    nav.toc { position: static !important; order: 2; }
+    main { order: 1; }
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: calc(100vh - 56px);
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  nav.toc .toc-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+  nav.toc a {
+    text-decoration: none;
+    color: var(--ink-soft);
+    font-size: 13.5px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border-left: 2px solid transparent;
+  }
+  nav.toc a:hover { background: var(--surface-2); color: var(--ink); }
+  nav.toc a.part { font-weight: 600; color: var(--ink); margin-top: 10px; }
+  nav.toc a.sub { padding-left: 20px; font-size: 12.5px; }
+
+  main { min-width: 0; display: flex; flex-direction: column; gap: 68px; }
+
+  /* ---------- Sections ---------- */
+  section.part {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    scroll-margin-top: 24px;
+  }
+  .part-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .part-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--surface);
+    background: var(--accent);
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-weight: 600;
+    flex: none;
+  }
+  .part-head h2 { font-size: 26px; font-weight: 600; }
+  .part-meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  h3.sub-head {
+    font-size: 18px;
+    font-weight: 600;
+    margin-top: 6px;
+    scroll-margin-top: 24px;
+  }
+  .prose { max-width: 70ch; color: var(--ink); }
+  .prose + .prose { margin-top: 2px; }
+  .prose b, .prose strong { color: var(--ink); font-weight: 600; }
+
+  /* theory callout */
+  .theory {
+    display: flex;
+    gap: 14px;
+    padding: 18px 20px;
+    background: var(--accent-tint);
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    max-width: 74ch;
+  }
+  .theory .stamp {
+    flex: none;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    padding: 3px 9px;
+    height: fit-content;
+    white-space: nowrap;
+  }
+  .theory .body { color: var(--ink); font-size: 15px; }
+  .theory .body b { color: var(--accent-strong); }
+
+  .practice {
+    display: flex;
+    gap: 14px;
+    padding: 16px 20px;
+    background: var(--accent-2-tint);
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--accent-2) 35%, transparent);
+    max-width: 74ch;
+  }
+  .practice .stamp { color: var(--accent-2); border-color: var(--accent-2); }
+  .practice .stamp { flex: none; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 3px 9px; height: fit-content; white-space: nowrap; }
+  .practice .body { font-size: 15px; }
+  .practice .body b { color: var(--accent-2); }
+
+  /* code blocks */
+  .code-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    border-radius: 10px;
+    background: var(--code-bg);
+    box-shadow: var(--shadow);
+  }
+  .code-file {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--code-line);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--code-ink-soft);
+  }
+  .code-file .dots { display: flex; gap: 5px; }
+  .code-file .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--code-line); }
+  pre.code {
+    margin: 0;
+    padding: 16px 18px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--code-ink);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  pre.code .k { color: var(--code-key); }
+  pre.code .s { color: var(--code-str); }
+  pre.code .c { color: var(--code-com); font-style: italic; }
+
+  details.expand {
+    max-width: 100%;
+  }
+  details.expand summary {
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--accent);
+    padding: 8px 2px;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  details.expand summary::-webkit-details-marker { display: none; }
+  details.expand summary::before { content: "▸"; transition: transform .15s ease; }
+  details.expand[open] summary::before { transform: rotate(90deg); }
+
+  /* diagrams */
+  .diagram-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+  }
+  .diagram-cap {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin-top: 8px;
+  }
+
+  /* tables */
+  .table-wrap { max-width: 100%; overflow-x: auto; }
+  table.ref {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 560px;
+    font-size: 14px;
+  }
+  table.ref th, table.ref td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  table.ref th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+  }
+  table.ref td.tag { color: var(--accent-strong); white-space: nowrap; font-weight: 600; }
+  table.ref tr:last-child td { border-bottom: none; }
+
+  ul.plain { list-style: none; display: flex; flex-direction: column; gap: 8px; padding: 0; max-width: 70ch; }
+  ul.plain li { position: relative; padding-left: 20px; color: var(--ink); font-size: 15px; }
+  ul.plain li::before { content: "—"; position: absolute; left: 0; color: var(--accent); }
+
+  .flow-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .flow-strip .step {
+    flex: 1 1 140px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .flow-strip .step:last-child { border-right: none; }
+  .flow-strip .step .n { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent); }
+  .flow-strip .step .t { font-size: 13.5px; font-weight: 600; }
+  .flow-strip .step .d { font-size: 12px; color: var(--ink-soft); }
+
+  footer.colophon {
+    margin-top: 90px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<div class="page">
+
+  <header class="doc-header">
+    <div class="doc-eyebrow">Field notes · Spring Boot 4.1.1 / Java 21</div>
+    <h1 class="doc-title">The CeylonPay Ledger</h1>
+    <p class="doc-sub">A theory-first walkthrough of everything CeylonPay's backend does and why Spring Boot does it that way — written to be read alongside the actual source, part by part, for an interview where you have to explain your own code.</p>
+    <div class="stack-row">
+      <span class="chip">Spring Boot 4.1.1</span>
+      <span class="chip">Java 21</span>
+      <span class="chip">Spring Security</span>
+      <span class="chip">Spring Data JPA / Hibernate</span>
+      <span class="chip">PostgreSQL</span>
+      <span class="chip">JJWT 0.12.6</span>
+      <span class="chip">JUnit 5 + Mockito</span>
+      <span class="chip">Docker</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc">
+      <div class="toc-label">On this ledger</div>
+      <a href="#thinking" class="part">How Spring Boot thinks</a>
+      <a href="#part1" class="part">Part 1 — Foundation</a>
+      <a href="#part1" class="sub">Entities &amp; JPA</a>
+      <a href="#part2" class="part">Part 2 — Auth</a>
+      <a href="#part2-flow1" class="sub">Register &amp; login</a>
+      <a href="#part2-flow2" class="sub">The filter chain</a>
+      <a href="#part3" class="part">Part 3 — Wallet</a>
+      <a href="#part4" class="part">Part 4 — Transfer</a>
+      <a href="#part4-flow" class="sub">@Transactional</a>
+      <a href="#part5" class="part">Part 5 — Testing &amp; Docker</a>
+      <a href="#part6" class="part">Part 6 — Frontend contract</a>
+      <a href="#crosscutting" class="part">Cross-cutting concerns</a>
+      <a href="#glossary" class="part">Annotation glossary</a>
+    </nav>
+
+    <main>
+
+      <!-- ============ HOW SPRING BOOT THINKS ============ -->
+      <section class="part" id="thinking">
+        <div class="part-head">
+          <span class="part-num">00</span>
+          <h2>How Spring Boot thinks</h2>
+        </div>
+        <p class="prose">Every part below leans on the same handful of ideas. Get these straight once and the rest of the codebase reads as applications of them, not new tricks.</p>
+
+        <h3 class="sub-head">Inversion of Control &amp; Dependency Injection</h3>
+        <p class="prose">In plain Java, a class that needs a collaborator constructs it: <code>new UserRepository()</code>. That wires your class to one concrete way of building that collaborator, forever. Spring flips this: you declare <i>what</i> you need in a constructor, and a container — the <b>ApplicationContext</b> — builds every object graph for you at startup and hands the dependency in. You never call <code>new</code> on your own services.</p>
+        <div class="theory">
+          <span class="stamp">Theory</span>
+          <div class="body">This is <b>Inversion of Control</b>: control over object creation moves from your code to the framework. <b>Dependency Injection</b> is the mechanism — Spring reads your constructor's parameter types, finds a matching <b>bean</b> (an object it manages), and passes it in.</div>
+        </div>
+        <div class="code-wrap">
+          <div class="code-file"><span>TransferService.java</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code"><span class="k">public</span> TransferService(UserRepository userRepository, WalletRepository walletRepository,
+                        TransactionRepository transactionRepository, AuditLogRepository auditLogRepository) {
+    <span class="k">this</span>.userRepository = userRepository;
+    <span class="k">this</span>.walletRepository = walletRepository;
+    <span class="k">this</span>.transactionRepository = transactionRepository;
+    <span class="k">this</span>.auditLogRepository = auditLogRepository;
+}</pre>
+        </div>
+        <p class="prose">Every service and controller in this project uses <b>constructor injection</b> like this — final fields, no <code>@Autowired</code> anywhere. That's a deliberate, slightly old-fashioned-looking choice: a class that can't compile without its dependencies can't silently run half-wired, and the constructor signature <i>is</i> the class's dependency list — no need to open the body to find out what it needs. Field injection (<code>@Autowired private Foo foo;</code>) is the shortcut you'll see in older tutorials; it works, but it hides the dependency list and makes the class impossible to construct without Spring.</p>
+
+        <h3 class="sub-head">What a "bean" actually is</h3>
+        <p class="prose">A bean is just an object whose lifecycle Spring owns. Three ways this project creates them:</p>
+        <ul class="plain">
+          <li><code>@Service</code>, <code>@RestController</code>, <code>@Component</code> on a class — Spring finds it during classpath scanning (triggered by <code>@SpringBootApplication</code> on <code>CeylonPayApplication</code>) and constructs one instance.</li>
+          <li><code>@Bean</code> methods inside an <code>@Configuration</code> class — for objects you don't own the source of, or that need custom construction logic. <code>SecurityConfig</code> uses this for <code>PasswordEncoder</code> and <code>CorsConfigurationSource</code>.</li>
+          <li>Interfaces extending <code>JpaRepository</code> — Spring Data generates an implementation and registers it as a bean at startup. You never write a repository class body.</li>
+        </ul>
+        <p class="prose">Unless stated otherwise, a bean is a <b>singleton</b> — one instance, shared by everything that asks for it, for the life of the application. That's safe here because none of these services hold mutable state on the instance itself; every request's data lives in method parameters and the database, not in fields.</p>
+      </section>
+
+      <!-- ============ PART 1 ============ -->
+      <section class="part" id="part1">
+        <div class="part-head">
+          <span class="part-num">01</span>
+          <h2>Foundation — entities, JPA, Postgres</h2>
+          <span class="part-meta">User · Wallet · JPA/Hibernate</span>
+        </div>
+        <p class="prose">Part 1 does one job: give the rest of the app a database to talk to, through Java objects instead of raw SQL.</p>
+
+        <h3 class="sub-head">JPA &amp; Hibernate, in one paragraph</h3>
+        <div class="theory">
+          <span class="stamp">Theory</span>
+          <div class="body"><b>JPA</b> (Jakarta Persistence API) is a specification: a set of annotations and interfaces for mapping Java objects to relational tables — <code>@Entity</code>, <code>@Id</code>, <code>@Column</code>, and so on. <b>Hibernate</b> is the library that actually implements the spec: it reads those annotations, generates SQL, and turns result sets back into objects. Spring Boot wires the two together and adds <b>Spring Data JPA</b> on top, which can write your repository queries for you from a method name alone.</div>
+        </div>
+
+        <div class="code-wrap">
+          <div class="code-file"><span>entity/User.java</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code"><span class="k">@Entity</span>
+<span class="k">@Table</span>(name = <span class="s">"users"</span>)
+<span class="k">@Getter</span> <span class="k">@Setter</span> <span class="k">@NoArgsConstructor</span> <span class="k">@AllArgsConstructor</span>
+<span class="k">public class</span> User {
+
+    <span class="k">@Id</span>
+    <span class="k">@GeneratedValue</span>(strategy = GenerationType.UUID)
+    <span class="k">private</span> String id;
+
+    <span class="k">@Column</span>(nullable = <span class="k">false</span>)
+    <span class="k">private</span> String name;
+
+    <span class="k">@Column</span>(nullable = <span class="k">false</span>, unique = <span class="k">true</span>)
+    <span class="k">private</span> String phone;
+
+    <span class="c">// nic, password, role...</span>
+
+    <span class="k">@CreationTimestamp</span>
+    <span class="k">@Column</span>(name = <span class="s">"created_at"</span>, nullable = <span class="k">false</span>, updatable = <span class="k">false</span>)
+    <span class="k">private</span> LocalDateTime createdAt;
+}</pre>
+        </div>
+
+        <p class="prose">Three choices here are worth being able to defend out loud:</p>
+        <ul class="plain">
+          <li><b>String UUID primary keys</b> instead of an auto-incrementing <code>Long</code>. <code>GenerationType.UUID</code> asks Hibernate to generate a random UUID in Java before insert. For anything money-adjacent, sequential integer IDs leak information (row count, ordering, "guess the next ID") — a UUID doesn't.</li>
+          <li><b><code>@CreationTimestamp</code> / <code>@UpdateTimestamp</code></b> (on <code>Wallet</code>) are <i>Hibernate's</i> annotations, not JPA's — Hibernate sets the field itself at insert/update time, so no service code ever has to remember to stamp a timestamp.</li>
+          <li><b>Lombok</b> (<code>@Getter @Setter @NoArgsConstructor @AllArgsConstructor</code>) generates the boilerplate getters/setters/constructors at compile time via an annotation processor. Look at <code>pom.xml</code>: it's marked <code>&lt;optional&gt;true&lt;/optional&gt;</code> and explicitly excluded from the Spring Boot Maven plugin's packaging step — it only needs to exist while <i>compiling</i>, never in the shipped jar.</li>
+        </ul>
+
+        <h3 class="sub-head">Money is a <code>BigDecimal</code>, never a <code>float</code></h3>
+        <div class="theory">
+          <span class="stamp">Theory</span>
+          <div class="body"><code>float</code>/<code>double</code> are binary floating point — they cannot represent most decimal fractions exactly (0.1 in binary is a repeating fraction), which is exactly the kind of rounding error a ledger cannot tolerate. <code>BigDecimal</code> stores an exact, arbitrary-precision decimal.</div>
+        </div>
+        <p class="prose"><code>Wallet.balance</code> and <code>Transaction.amount</code> are both declared <code>@Column(precision = 19, scale = 4)</code> — up to 19 total digits, 4 of them after the decimal point, matched exactly by the column type Postgres creates (<code>numeric(19,4)</code>). The Java type and the database type agree on precision; nothing gets silently truncated on either side.</p>
+
+        <h3 class="sub-head">Repositories: queries from method names</h3>
+        <div class="code-wrap">
+          <div class="code-file"><span>repository/WalletRepository.java</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code"><span class="k">public interface</span> WalletRepository <span class="k">extends</span> JpaRepository&lt;Wallet, String&gt; {
+    Optional&lt;Wallet&gt; findByUserId(String userId);
+}</pre>
+        </div>
+        <p class="prose">No SQL, no implementation — Spring Data parses the method name at startup (<code>findBy</code> + <code>UserId</code>) and generates a query against the <code>user</code> property of <code>Wallet</code>. <code>TransactionRepository</code> takes this further with <code>findBySender_IdOrReceiver_IdOrderByCreatedAtDesc</code> — the underscore tells Spring Data to cross the <code>sender</code> relationship and match its <code>id</code>, rather than looking for a flat property literally named <code>sender_Id</code>.</p>
+      </section>
+
+      <!-- ============ PART 2 ============ -->
+      <section class="part" id="part2">
+        <div class="part-head">
+          <span class="part-num">02</span>
+          <h2>Authentication — JWT &amp; Spring Security</h2>
+          <span class="part-meta">AuthService · JwtUtil · JwtAuthFilter · SecurityConfig</span>
+        </div>
+        <p class="prose">This is the part interviewers probe hardest, because it's where "I copied a tutorial" and "I understand the filter chain" sound completely different.</p>
+
+        <h3 class="sub-head">Why tokens, not sessions</h3>
+        <div class="theory">
+          <span class="stamp">Theory</span>
+          <div class="body">A traditional server keeps a <b>session</b> in memory (or a shared store) per logged-in user, and gives the browser a session-id cookie to look it up on every request. That means the server has to remember state, and remembering state across multiple server instances needs a shared session store. A <b>JWT</b> (JSON Web Token) flips this: the token itself carries everything the server needs to trust the caller, cryptographically signed so it can't be forged. The server verifies a signature instead of looking anything up — <b>stateless</b>. That's why <code>SecurityConfig</code> sets <code>SessionCreationPolicy.STATELESS</code>: Spring is told not to create an <code>HttpSession</code> at all.</div>
+        </div>
+
+        <p class="prose">A JWT has three dot-separated, Base64URL-encoded parts: a <b>header</b> (algorithm used), a <b>payload</b> (claims — here just the user's ID, issued-at, and expiry), and a <b>signature</b> (HMAC-SHA of the first two parts, computed with a secret key only the server knows). Anyone can <i>read</i> the payload — it's just Base64, not encrypted — but nobody can <i>alter</i> it without invalidating the signature.</p>
+
+        <div class="code-wrap">
+          <div class="code-file"><span>security/JwtUtil.java</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code"><span class="k">public</span> JwtUtil(<span class="k">@Value</span>(<span class="s">"${jwt.secret}"</span>) String secret,
+                <span class="k">@Value</span>(<span class="s">"${jwt.expiration-ms}"</span>) <span class="k">long</span> expirationMs) {
+    <span class="k">this</span>.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+    <span class="k">this</span>.expirationMs = expirationMs;
+}
+
+<span class="k">public</span> String generateToken(String userId) {
+    Date now = <span class="k">new</span> Date();
+    <span class="k">return</span> Jwts.builder()
+            .subject(userId)
+            .issuedAt(now)
+            .expiration(<span class="k">new</span> Date(now.getTime() + expirationMs))
+            .signWith(key)
+            .compact();
+}</pre>
+        </div>
+        <p class="prose"><code>@Value("${jwt.secret}")</code> pulls the signing key from <code>application.properties</code> (or, in production, the <code>JWT_SECRET</code> environment variable via the docker profile) rather than hardcoding it — the same secret has to sign <i>and</i> later verify every token, so it must never change while tokens are still valid, and never leak. The token's <b>subject</b> is just the user's UUID — deliberately minimal. No name, no phone, no role: anything sensitive stays in the database, looked up fresh on each request that needs it.</p>
+
+        <h3 class="sub-head" id="part2-flow1">Flow: register &amp; login</h3>
+        <div class="diagram-wrap">
+<pre class="mermaid">
+sequenceDiagram
+    participant C as Browser
+    participant AC as AuthController
+    participant AS as AuthService
+    participant DB as Postgres
+    participant JU as JwtUtil
+
+    C->>AC: POST /api/auth/register {name, phone, nic, password}
+    AC->>AS: register(request)
+    AS->>DB: findByPhone / findByNic
+    DB-->>AS: not found
+    AS->>AS: passwordEncoder.encode(password)
+    AS->>DB: save User, save Wallet(balance = 0)
+    AS->>JU: generateToken(user.id)
+    JU-->>AS: signed JWT
+    AS-->>AC: AuthResponse(token, userId, name)
+    AC-->>C: 200 OK + JWT
+
+    Note over C,DB: Later — logging back in
+    C->>AC: POST /api/auth/login {phone, password}
+    AC->>AS: login(request)
+    AS->>DB: findByPhone(phone)
+    DB-->>AS: User (hashed password)
+    AS->>AS: passwordEncoder.matches(raw, hashed)
+    AS->>JU: generateToken(user.id)
+    JU-->>AS: signed JWT
+    AS-->>AC: AuthResponse
+    AC-->>C: 200 OK + JWT
+</pre>
+        </div>
+        <p class="diagram-cap">Both endpoints end the same way — a fresh signed JWT — but only login checks a password. Registration trusts the request because it's creating a brand-new identity; there's nothing to authenticate against yet.</p>
+
+        <div class="practice">
+          <span class="stamp">In this codebase</span>
+          <div class="body">Registration creates <b>two rows in one call</b> — a <code>User</code> and a zero-balance <code>Wallet</code> — so it's structurally impossible to have a user with no wallet. Passwords are hashed with <code>BCryptPasswordEncoder</code> (a <code>PasswordEncoder</code> bean from <code>SecurityConfig</code>): a slow, salted, one-way hash — <code>matches()</code> re-hashes the login attempt with the same embedded salt and compares, the raw password is never stored or compared directly.</div>
+        </div>
+
+        <h3 class="sub-head" id="part2-flow2">Flow: an authenticated request &amp; the filter chain</h3>
+        <div class="theory">
+          <span class="stamp">Theory</span>
+          <div class="body">Spring Security works as a chain of <b>servlet filters</b> that every HTTP request passes through <i>before</i> it reaches your <code>@RestController</code>. Each filter can inspect the request, reject it outright, or attach information for the next one. <code>SecurityFilterChain</code> is where you declare which filters run and in what order.</div>
+        </div>
+        <div class="diagram-wrap">
+<pre class="mermaid">
+sequenceDiagram
+    participant C as Browser
+    participant JF as JwtAuthFilter
+    participant SC as SecurityContextHolder
+    participant TC as TransferController
+    participant TS as TransferService
+
+    C->>JF: POST /api/transfer<br/>Authorization: Bearer &lt;jwt&gt;
+    JF->>JF: isTokenValid(token)?
+    alt token valid
+        JF->>JF: extractUserId(token)
+        JF->>SC: setAuthentication(userId, no roles)
+        JF->>TC: filterChain.doFilter(...)
+        TC->>TS: transfer(authentication.getName(), ...)
+        TS-->>TC: TransactionResponse
+        TC-->>C: 200 OK
+    else missing / invalid token
+        JF->>TC: filterChain.doFilter(...) (no Authentication set)
+        TC->>C: 401 Unauthorized (AuthenticationEntryPoint)
+    end
+</pre>
+        </div>
+        <p class="diagram-cap">The controller never touches the JWT directly. By the time <code>TransferController</code> runs, Spring has already resolved <i>who</i> is calling — it just reads <code>Authentication.getName()</code>.</p>
+
+        <div class="code-wrap">
+          <div class="code-file"><span>security/JwtAuthFilter.java</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code"><span class="k">protected void</span> doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                 FilterChain filterChain) <span class="k">throws</span> ServletException, IOException {
+    String header = request.getHeader(<span class="s">"Authorization"</span>);
+    <span class="k">if</span> (header != <span class="k">null</span> &amp;&amp; header.startsWith(<span class="s">"Bearer "</span>)) {
+        String token = header.substring(<span class="s">"Bearer "</span>.length());
+        <span class="k">if</span> (jwtUtil.isTokenValid(token)) {
+            String userId = jwtUtil.extractUserId(token);
+            <span class="k">var</span> authentication = <span class="k">new</span> UsernamePasswordAuthenticationToken(userId, <span class="k">null</span>, Collections.emptyList());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
+    }
+    filterChain.doFilter(request, response); <span class="c">// always continue — Security decides authorized-ness later</span>
+}</pre>
+        </div>
+        <p class="prose"><code>JwtAuthFilter extends OncePerRequestFilter</code> — a Spring Security base class that guarantees the filter's logic runs exactly once per request, even across internal forwards. It's registered via <code>.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)</code> in <code>SecurityConfig</code> — inserted just ahead of Spring Security's own username/password filter, so JWT authentication happens before Spring gets a chance to look for anything else.</p>
+        <div class="theory">
+          <span class="stamp">Theory</span>
+          <div class="body">The neat trick: <code>new UsernamePasswordAuthenticationToken(userId, null, emptyList())</code> puts the raw <code>userId</code> string in as the <b>principal</b> (first argument). When something later calls <code>authentication.getName()</code>, Spring Security calls <code>toString()</code> on the principal — since it's already a <code>String</code>, that's just the user's UUID. No custom <code>UserDetails</code> class needed; every controller in this project fetches "who is calling" with one line: <code>authentication.getName()</code>.</div>
+        </div>
+        <p class="prose">Notice the third argument is an <b>empty</b> authorities list — no roles are granted. That's fine here because <code>SecurityConfig</code> only distinguishes "authenticated" from "not authenticated" (<code>anyRequest().authenticated()</code>), never role-based access — every logged-in user can call every non-auth endpoint, and per-user data isolation is enforced in the service layer instead (see Part 3).</p>
+
+        <h3 class="sub-head">The security filter chain, declared</h3>
+        <div class="code-wrap">
+          <div class="code-file"><span>config/SecurityConfig.java</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code">http
+    .cors(cors -&gt; cors.configurationSource(corsConfigurationSource()))
+    .csrf(csrf -&gt; csrf.disable())
+    .sessionManagement(session -&gt; session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+    .authorizeHttpRequests(auth -&gt; auth
+            .requestMatchers(<span class="s">"/api/auth/**"</span>).permitAll()
+            .requestMatchers(<span class="s">"/error"</span>).permitAll()
+            .anyRequest().authenticated()
+    )
+    .exceptionHandling(ex -&gt; ex.authenticationEntryPoint((req, res, e) -&gt;
+            res.sendError(HttpServletResponse.SC_UNAUTHORIZED, <span class="s">"Unauthorized"</span>)))
+    .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);</pre>
+        </div>
+        <ul class="plain">
+          <li><b>CSRF is disabled</b> — Cross-Site Request Forgery protection defends cookie-based sessions, where a browser attaches cookies automatically to any site's request. A stateless, header-based JWT API has nothing for CSRF to exploit: no ambient cookie, no automatic attachment.</li>
+          <li><b><code>/api/auth/**</code> is <code>permitAll()</code></b> — you can't require a JWT to obtain a JWT. Everything else falls to <code>anyRequest().authenticated()</code>.</li>
+          <li>The custom <b><code>authenticationEntryPoint</code></b> overrides Spring's default (a login-page redirect, meaningless for a JSON API) with a plain <code>401</code>.</li>
+        </ul>
+      </section>
+
+      <!-- ============ PART 3 ============ -->
+      <section class="part" id="part3">
+        <div class="part-head">
+          <span class="part-num">03</span>
+          <h2>Wallet &amp; deposit — access control without roles</h2>
+          <span class="part-meta">WalletService · WalletController</span>
+        </div>
+        <p class="prose">There's no <code>@PreAuthorize</code> or role check anywhere in <code>WalletController</code>. So what stops User A from reading User B's balance?</p>
+        <div class="theory">
+          <span class="stamp">Theory</span>
+          <div class="body">This is <b>resource-based access control</b>: instead of asking "is this role allowed to call this endpoint", the service asks "does the resource being fetched belong to the caller". Both questions are "authorization", but the second one is enforced by the query itself, not a separate rule engine.</div>
+        </div>
+        <div class="code-wrap">
+          <div class="code-file"><span>service/WalletService.java</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code"><span class="k">public</span> BalanceResponse getBalance(String userId) {
+    Wallet wallet = walletRepository.findByUserId(userId)
+            .orElseThrow(() -&gt; <span class="k">new</span> WalletNotFoundException(<span class="s">"No wallet found for this user"</span>));
+    <span class="k">return</span> toResponse(wallet);
+}</pre>
+        </div>
+        <p class="prose"><code>WalletController.getBalance(Authentication authentication)</code> passes <code>authentication.getName()</code> — the JWT-derived userId, never a client-supplied one — straight into this lookup. There is no endpoint that takes a wallet ID or user ID as a request parameter; the only wallet a request can ever touch is the caller's own, because the query is always scoped by the identity the filter chain already verified. The access control isn't a check you could forget to add — it's the shape of the query.</p>
+      </section>
+
+      <!-- ============ PART 4 ============ -->
+      <section class="part" id="part4">
+        <div class="part-head">
+          <span class="part-num">04</span>
+          <h2>P2P transfer — the correctness centerpiece</h2>
+          <span class="part-meta">TransferService · @Transactional</span>
+        </div>
+        <p class="prose">A transfer touches two wallets, a transaction record, and an audit log. If any step fails partway, money must not appear or vanish. This is the one part of the app where getting the theory wrong means losing (or duplicating) real money.</p>
+
+        <h3 class="sub-head" id="part4-flow">ACID, and which letter <code>@Transactional</code> buys you</h3>
+        <div class="theory">
+          <span class="stamp">Theory</span>
+          <div class="body">A database transaction is judged against four properties — <b>Atomicity</b> (all-or-nothing), <b>Consistency</b> (never leaves data in a state that violates its rules), <b>Isolation</b> (concurrent transactions don't see each other's half-finished work), <b>Durability</b> (once committed, survives a crash). Spring's <code>@Transactional</code> wraps a method in a proxy: it opens a database transaction before the method runs, and — this is the important part — <b>rolls the whole thing back</b> if the method exits via an unchecked (<code>RuntimeException</code>) exception, or commits it if the method returns normally.</div>
+        </div>
+
+        <div class="code-wrap">
+          <div class="code-file"><span>service/TransferService.java</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code"><span class="k">@Transactional</span>
+<span class="k">public</span> TransactionResponse transfer(String senderUserId, String toPhone, BigDecimal amount) {
+    Wallet senderWallet = walletRepository.findByUserId(senderUserId)
+            .orElseThrow(() -&gt; <span class="k">new</span> WalletNotFoundException(<span class="s">"Sender wallet not found"</span>));
+    <span class="c">// ...look up recipient, reject self-transfer...</span>
+
+    <span class="k">if</span> (senderWallet.getBalance().compareTo(amount) &lt; 0) {
+        <span class="k">throw new</span> InsufficientBalanceException(<span class="s">"Insufficient balance"</span>);  <span class="c">// ← rolls back everything below</span>
+    }
+
+    senderWallet.setBalance(senderWallet.getBalance().subtract(amount));
+    recipientWallet.setBalance(recipientWallet.getBalance().add(amount));
+    walletRepository.save(senderWallet);
+    walletRepository.save(recipientWallet);
+
+    Transaction txn = <span class="k">new</span> Transaction(senderWallet, recipientWallet, amount, <span class="s">"SUCCESS"</span>);
+    transactionRepository.saveAndFlush(txn);
+    auditLogRepository.save(<span class="k">new</span> AuditLog(txn, buildAuditDetail(senderWallet, recipientWallet, amount)));
+
+    <span class="k">return new</span> TransactionResponse(txn.getId(), amount, toPhone, senderWallet.getBalance(), txn.getCreatedAt());
+}</pre>
+        </div>
+        <p class="prose">Notice the balance check happens <b>before</b> either wallet is mutated — that's just good order, not what makes this safe. What makes it safe is that <code>InsufficientBalanceException</code>, <code>WalletNotFoundException</code>, and <code>InvalidTransferException</code> are all unchecked exceptions extending <code>RuntimeException</code>. If the balance check fails, throwing is enough — Spring's transactional proxy catches it, issues a database <code>ROLLBACK</code>, and neither wallet's `save()` (which, at that point, hasn't even been called) ever reaches the database. If you moved the balance mutation earlier and the check later, atomicity would still save you — that's the property's whole point.</p>
+
+        <div class="diagram-wrap">
+<pre class="mermaid">
+sequenceDiagram
+    participant C as Client
+    participant TC as TransferController
+    participant TS as TransferService (@Transactional)
+    participant DB as Postgres
+
+    C->>TC: POST /api/transfer {toPhone, amount}
+    TC->>TS: transfer(senderId, toPhone, amount)
+    TS->>DB: BEGIN
+    TS->>DB: find sender wallet, recipient wallet
+    alt sender == recipient
+        TS-->>TC: throw InvalidTransferException
+        TS->>DB: ROLLBACK
+        TC-->>C: 400 "Cannot transfer to your own wallet"
+    else balance too low
+        TS-->>TC: throw InsufficientBalanceException
+        TS->>DB: ROLLBACK
+        TC-->>C: 400 "Insufficient balance"
+    else balance sufficient
+        TS->>DB: UPDATE sender.balance -= amount
+        TS->>DB: UPDATE recipient.balance += amount
+        TS->>DB: INSERT Transaction, flush
+        TS->>DB: INSERT AuditLog
+        TS->>DB: COMMIT
+        TS-->>TC: TransactionResponse
+        TC-->>C: 200 OK
+    end
+</pre>
+        </div>
+        <p class="diagram-cap">Two failure branches, one success branch — every branch either commits a fully-consistent pair of balances, or rolls back to the state before the transaction started. There's no branch that leaves one wallet updated and the other not.</p>
+
+        <div class="practice">
+          <span class="stamp">Why <code>saveAndFlush</code>, not <code>save</code></span>
+          <div class="body">Plain <code>save()</code> can defer the actual SQL <code>INSERT</code> until the transaction commits (Hibernate batches writes for efficiency). <code>saveAndFlush()</code> forces that <code>INSERT</code> to run immediately, so <code>txn.getId()</code> and <code>txn.getCreatedAt()</code> — both database-generated — are guaranteed populated in time to build the <code>AuditLog</code> and the response, still inside the same transaction.</div>
+        </div>
+
+        <h3 class="sub-head">Reading history: the counterparty view</h3>
+        <p class="prose"><code>getHistory</code> deliberately isn't <code>@Transactional</code> — it only reads, and a plain read doesn't need atomicity or a rollback path. The interesting bit is how one row becomes "sent" for one wallet and "received" for the other, from the exact same stored <code>Transaction</code>:</p>
+        <div class="code-wrap">
+          <div class="code-file"><span>service/TransferService.java</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code"><span class="k">private</span> TransactionHistoryResponse toHistoryResponse(Transaction txn, String myWalletId) {
+    <span class="k">boolean</span> sent = txn.getSender().getId().equals(myWalletId);
+    Wallet counterparty = sent ? txn.getReceiver() : txn.getSender();
+    <span class="k">return new</span> TransactionHistoryResponse(
+            txn.getId(), sent ? <span class="s">"SENT"</span> : <span class="s">"RECEIVED"</span>,
+            counterparty.getUser().getName(), counterparty.getUser().getPhone(),
+            txn.getAmount(), txn.getCreatedAt());
+}</pre>
+        </div>
+        <p class="prose">One immutable row, two viewpoints — the direction label is computed relative to whoever is asking, never stored on the row itself. Storing "SENT"/"RECEIVED" on the transaction would mean storing it twice (once per party) or picking one party's viewpoint arbitrarily; deriving it keeps the row a single source of truth.</p>
+      </section>
+
+      <!-- ============ PART 5 ============ -->
+      <section class="part" id="part5">
+        <div class="part-head">
+          <span class="part-num">05</span>
+          <h2>Testing &amp; Docker</h2>
+          <span class="part-meta">Mockito · @SpringBootTest · multi-stage build</span>
+        </div>
+
+        <h3 class="sub-head">Two different things both called "testing"</h3>
+        <div class="theory">
+          <span class="stamp">Theory</span>
+          <div class="body">A <b>unit test</b> isolates one class by replacing its collaborators with fakes, so a failure points at exactly one place and the test runs in milliseconds with no external system. An <b>integration test</b> boots real (or realistic) collaborators — a real Spring context, a real database — to prove the wiring between classes actually works, at the cost of being slower and telling you less precisely where a failure lives.</div>
+        </div>
+
+        <div class="code-wrap">
+          <div class="code-file"><span>service/TransferServiceTest.java — unit test</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code"><span class="k">@ExtendWith</span>(MockitoExtension.class)
+<span class="k">class</span> TransferServiceTest {
+    <span class="k">@Mock</span> <span class="k">private</span> WalletRepository walletRepository; <span class="c">// fake — never touches a database</span>
+    <span class="k">@InjectMocks</span> <span class="k">private</span> TransferService transferService; <span class="c">// real object, fakes wired in</span>
+
+    <span class="k">@Test</span>
+    <span class="k">void</span> transfer_shouldThrow_whenBalanceInsufficient() {
+        <span class="c">// given two mocked wallets...</span>
+        assertThatThrownBy(() -&gt; transferService.transfer(<span class="s">"user-sender"</span>, <span class="s">"0722222222"</span>, <span class="k">new</span> BigDecimal(<span class="s">"200.00"</span>)))
+                .isInstanceOf(InsufficientBalanceException.class);
+
+        verify(walletRepository, never()).save(any()); <span class="c">// proves nothing was persisted</span>
+    }
+}</pre>
+        </div>
+        <p class="prose"><code>@Mock</code> creates a fake <code>WalletRepository</code> that returns exactly what a <code>when(...).thenReturn(...)</code> stub tells it to; <code>@InjectMocks</code> constructs a real <code>TransferService</code> with those fakes wired into its constructor. No Spring context boots, no database connects — this whole test suite runs in well under a second, which is why the project has seven unit tests exercising every branch of <code>transfer()</code> and <code>getHistory()</code> individually.</p>
+
+        <div class="code-wrap">
+          <div class="code-file"><span>TransferIntegrationTest.java — integration test</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code"><span class="k">@SpringBootTest</span>
+<span class="k">@AutoConfigureMockMvc</span>
+<span class="k">class</span> TransferIntegrationTest {
+    <span class="k">@Autowired</span> <span class="k">private</span> MockMvc mockMvc; <span class="c">// drives real HTTP request handling, no real socket</span>
+
+    <span class="k">@Test</span>
+    <span class="k">void</span> transferMovesRealMoneyBetweenRealWalletsThroughTheFullStack() <span class="k">throws</span> Exception {
+        String senderToken = register(<span class="s">"Sender E"</span>, SENDER_PHONE, <span class="s">"555555555V"</span>, <span class="s">"passwordE"</span>);
+        <span class="c">// deposit, then transfer, through real controllers, real services, a real Postgres</span>
+        assertThat(senderWallet.getBalance()).isEqualByComparingTo(<span class="s">"300.0000"</span>);
+    }
+}</pre>
+        </div>
+        <p class="prose"><code>@SpringBootTest</code> boots the <b>entire</b> application context — every bean, real database connection, the works. <code>@AutoConfigureMockMvc</code> lets the test drive HTTP requests (<code>mockMvc.perform(post(...))</code>) through the actual <code>DispatcherServlet</code> routing, security filters included, without opening a real network port. This single test proves <code>AuthController → AuthService → TransferController → TransferService → repositories → Postgres</code> all agree with each other — something no amount of mocking could prove. Because it runs against a real, shared Postgres instance rather than a disposable one, the test cleans up its own rows in an <code>@AfterEach</code> — a hygiene habit that matters once tests don't own a throwaway database.</p>
+
+        <h3 class="sub-head">Multi-stage Docker build</h3>
+        <div class="code-wrap">
+          <div class="code-file"><span>Dockerfile</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code"><span class="c"># Stage 1: build — needs Maven + the full JDK</span>
+FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline      <span class="c"># cached as its own Docker layer</span>
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+<span class="c"># Stage 2: run — only needs a JRE + the jar</span>
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+ENTRYPOINT ["java", "-jar", "app.jar"]</pre>
+        </div>
+        <div class="theory">
+          <span class="stamp">Theory</span>
+          <div class="body">A <b>multi-stage build</b> lets a Dockerfile use one image to <i>build</i> the artifact and a completely different, smaller image to <i>run</i> it — only the <code>COPY --from=build</code> line crosses between stages. The final image never contains Maven, the compiler, or the source tree — just a JRE (no compiler, smaller than a full JDK) and one jar file. <code>mvn dependency:go-offline</code> is placed before <code>COPY src</code> deliberately: Docker caches each instruction's layer, so as long as <code>pom.xml</code> hasn't changed, a rebuild reuses the downloaded-dependencies layer and only re-runs the (fast) compile step.</div>
+        </div>
+
+        <h3 class="sub-head">One jar, many environments — Spring profiles</h3>
+        <p class="prose"><code>application.properties</code> hardcodes local defaults (a local Postgres, a dev JWT secret). <code>application-docker.properties</code> replaces every one of those with an <code>${ENV_VAR}</code> placeholder, and is only loaded when <code>SPRING_PROFILES_ACTIVE=docker</code> is set — the mechanism <code>docker-compose.yml</code> and the Render deployment both use. Same jar, same code, different configuration source per place it runs.</p>
+      </section>
+
+      <!-- ============ PART 6 ============ -->
+      <section class="part" id="part6">
+        <div class="part-head">
+          <span class="part-num">06</span>
+          <h2>The frontend contract</h2>
+          <span class="part-meta">CORS · REST · Bearer tokens</span>
+        </div>
+        <p class="prose">Part 6's React app isn't Spring Boot, but it's the reason two of Spring's cross-cutting pieces exist at all.</p>
+        <div class="theory">
+          <span class="stamp">Theory</span>
+          <div class="body">Browsers enforce the <b>same-origin policy</b>: JavaScript running on <code>ceylonpay.vercel.app</code> is blocked by default from reading a response from <code>ceylonpay-api.onrender.com</code> — a different origin (scheme + host + port). <b>CORS</b> (Cross-Origin Resource Sharing) is the server opting back in: it returns headers naming exactly which origins, methods, and headers it will allow, and the browser enforces that answer.</div>
+        </div>
+        <div class="code-wrap">
+          <div class="code-file"><span>config/SecurityConfig.java</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code"><span class="k">@Bean</span>
+<span class="k">public</span> CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration configuration = <span class="k">new</span> CorsConfiguration();
+    configuration.setAllowedOrigins(allowedOrigins); <span class="c">// from cors.allowed-origins, env-configurable</span>
+    configuration.setAllowedMethods(List.of(<span class="s">"GET"</span>, <span class="s">"POST"</span>, <span class="s">"PUT"</span>, <span class="s">"DELETE"</span>, <span class="s">"OPTIONS"</span>));
+    configuration.setAllowedHeaders(List.of(<span class="s">"Authorization"</span>, <span class="s">"Content-Type"</span>));
+    <span class="c">// registered on the security filter chain via .cors(...)</span>
+}</pre>
+        </div>
+        <p class="prose">On the client, the JWT never lives in a cookie — the React app stores it in <code>localStorage</code> and attaches it itself on every request: <code>Authorization: Bearer &lt;token&gt;</code>. That's a deliberate pairing with the stateless design in Part 2 — no cookie means no CSRF surface, but it also means the frontend, not the browser, is responsible for remembering and re-attaching the token.</p>
+        <div class="flow-strip">
+          <div class="step"><span class="n">01</span><span class="t">React app requests</span><span class="d">fetch() with Authorization header</span></div>
+          <div class="step"><span class="n">02</span><span class="t">Browser preflight</span><span class="d">OPTIONS request, checks CORS headers</span></div>
+          <div class="step"><span class="n">03</span><span class="t">JwtAuthFilter</span><span class="d">verifies signature, sets Authentication</span></div>
+          <div class="step"><span class="n">04</span><span class="t">Controller</span><span class="d">reads authentication.getName()</span></div>
+        </div>
+      </section>
+
+      <!-- ============ CROSS-CUTTING ============ -->
+      <section class="part" id="crosscutting">
+        <div class="part-head">
+          <span class="part-num">×</span>
+          <h2>Cross-cutting: turning exceptions into a stable API</h2>
+          <span class="part-meta">@RestControllerAdvice</span>
+        </div>
+        <p class="prose">Every service throws plain, meaningful Java exceptions — <code>InsufficientBalanceException</code>, <code>WalletNotFoundException</code> — with no idea what HTTP status code means "insufficient balance". That translation happens in exactly one place.</p>
+        <div class="theory">
+          <span class="stamp">Theory</span>
+          <div class="body"><code>@RestControllerAdvice</code> is a <b>cross-cutting concern</b> — logic that would otherwise be duplicated in every controller (a try/catch around every method) is instead declared once, globally. Spring intercepts any exception a controller method throws, matches it against an <code>@ExceptionHandler(SomeException.class)</code> method here, and uses <i>that</i> method's return value as the actual HTTP response.</div>
+        </div>
+        <div class="code-wrap">
+          <div class="code-file"><span>config/GlobalExceptionHandler.java</span><span class="dots"><span></span><span></span><span></span></span></div>
+          <pre class="code"><span class="k">@RestControllerAdvice</span>
+<span class="k">public class</span> GlobalExceptionHandler {
+
+    <span class="k">@ExceptionHandler</span>(InsufficientBalanceException.class)
+    <span class="k">public</span> ResponseEntity&lt;Map&lt;String, String&gt;&gt; handleInsufficientBalance(InsufficientBalanceException e) {
+        <span class="k">return</span> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(<span class="s">"error"</span>, e.getMessage()));
+    }
+    <span class="c">// one handler per exception type — WalletNotFound → 404, InvalidCredentials → 401, ...</span>
+}</pre>
+        </div>
+        <p class="prose">This keeps the service layer's job pure — <i>decide</i> what went wrong and say so in a Java exception — and the web layer's job separate — <i>translate</i> that decision into the HTTP contract the frontend expects: always <code>{ "error": "..." }</code>, always a status code chosen on purpose. The one gap the frontend build ran into (Part 6 of the React work): a <code>@Valid</code> failure on a request DTO throws Spring's own <code>MethodArgumentNotValidException</code> before a controller method body ever runs — not caught by any handler above — so <i>that</i> failure falls back to Spring's default, generically-shaped 400. Same mechanism, no handler registered for it here.</p>
+      </section>
+
+      <!-- ============ GLOSSARY ============ -->
+      <section class="part" id="glossary">
+        <div class="part-head">
+          <span class="part-num">§</span>
+          <h2>Annotation glossary</h2>
+          <span class="part-meta">quick reference</span>
+        </div>
+        <div class="table-wrap">
+          <table class="ref">
+            <thead><tr><th>Annotation</th><th>What it does here</th></tr></thead>
+            <tbody>
+              <tr><td class="tag">@SpringBootApplication</td><td>On <code>CeylonPayApplication</code> — triggers component scanning, auto-configuration, and marks the entry point Spring Boot's <code>main()</code> bootstraps.</td></tr>
+              <tr><td class="tag">@Entity / @Table</td><td>Maps a Java class to a database table (Hibernate).</td></tr>
+              <tr><td class="tag">@Id / @GeneratedValue</td><td>Marks the primary key; <code>GenerationType.UUID</code> generates a random UUID client-side before insert.</td></tr>
+              <tr><td class="tag">@Column</td><td>Column-level constraints — nullability, uniqueness, precision/scale for <code>BigDecimal</code>.</td></tr>
+              <tr><td class="tag">@OneToOne / @ManyToOne / @JoinColumn</td><td>Declares a foreign-key relationship and which column holds it (<code>User↔Wallet</code> is one-to-one; <code>Transaction→Wallet</code> is many-to-one, twice).</td></tr>
+              <tr><td class="tag">@CreationTimestamp / @UpdateTimestamp</td><td>Hibernate (not JPA) — stamps the field automatically, no service code involved.</td></tr>
+              <tr><td class="tag">@Service</td><td>Marks a class as a business-logic bean, scanned and instantiated automatically.</td></tr>
+              <tr><td class="tag">@RestController / @RequestMapping / @GetMapping / @PostMapping</td><td>Declares a class (and its methods) as HTTP endpoints returning JSON directly, no view layer.</td></tr>
+              <tr><td class="tag">@Valid</td><td>On a controller parameter — triggers Jakarta Bean Validation against the DTO's own annotations (<code>@NotBlank</code>, <code>@Pattern</code>) before the method body runs.</td></tr>
+              <tr><td class="tag">@Configuration / @Bean</td><td>A class that produces beans via method calls, for objects that need custom construction (<code>PasswordEncoder</code>, <code>CorsConfigurationSource</code>).</td></tr>
+              <tr><td class="tag">@EnableWebSecurity</td><td>Turns on Spring Security's configuration support for the app.</td></tr>
+              <tr><td class="tag">@Transactional</td><td>Wraps a method in a database transaction; rolls back entirely on an unchecked exception.</td></tr>
+              <tr><td class="tag">@ExceptionHandler / @RestControllerAdvice</td><td>Global, centralized mapping from a thrown exception type to an HTTP response.</td></tr>
+              <tr><td class="tag">@Value</td><td>Injects a single property (from <code>application.properties</code> or an environment variable) into a field or constructor parameter.</td></tr>
+              <tr><td class="tag">@ExtendWith(MockitoExtension.class)</td><td>JUnit 5 — activates Mockito's <code>@Mock</code>/<code>@InjectMocks</code> processing for a test class, with no Spring context involved.</td></tr>
+              <tr><td class="tag">@SpringBootTest / @AutoConfigureMockMvc</td><td>Boots the real application context for an integration test; adds the ability to drive HTTP requests through <code>MockMvc</code> without a real server socket.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="colophon">
+    <span>lk.ceylonpay · Spring Boot 4.1.1 · Java 21</span>
+    <span>Written for reading alongside the source, not instead of it.</span>
+  </footer>
+
+</div>

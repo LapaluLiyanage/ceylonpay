@@ -3,6 +3,7 @@ package lk.ceylonpay;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import lk.ceylonpay.repository.AuditLogRepository;
+import lk.ceylonpay.repository.LedgerEntryRepository;
 import lk.ceylonpay.repository.TransactionRepository;
 import lk.ceylonpay.repository.UserRepository;
 import lk.ceylonpay.repository.WalletRepository;
@@ -13,6 +14,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 
@@ -45,14 +48,25 @@ class TransferIntegrationTest {
     @Autowired
     private AuditLogRepository auditLogRepository;
 
+    @Autowired
+    private LedgerEntryRepository ledgerEntryRepository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     @AfterEach
     void cleanUpTestUsers() {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> doCleanUpTestUsers());
+    }
+
+    private void doCleanUpTestUsers() {
         userRepository.findByPhone(SENDER_PHONE).ifPresent(sender -> {
             walletRepository.findByUserId(sender.getId()).ifPresent(wallet -> {
                 transactionRepository.findAll().stream()
                         .filter(t -> t.getSender().getId().equals(wallet.getId())
                                 || t.getReceiver().getId().equals(wallet.getId()))
                         .forEach(t -> {
+                            ledgerEntryRepository.deleteByTransaction_Id(t.getId());
                             auditLogRepository.findAll().stream()
                                     .filter(a -> a.getTransaction().getId().equals(t.getId()))
                                     .forEach(auditLogRepository::delete);

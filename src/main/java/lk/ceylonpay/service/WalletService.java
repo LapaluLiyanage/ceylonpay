@@ -1,5 +1,7 @@
 package lk.ceylonpay.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lk.ceylonpay.dto.BalanceResponse;
 import lk.ceylonpay.entity.AuditLog;
 import lk.ceylonpay.entity.OutboxEvent;
@@ -17,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 public class WalletService {
@@ -27,16 +31,19 @@ public class WalletService {
     private final AuditLogRepository auditLogRepository;
     private final LedgerService ledgerService;
     private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
 
     public WalletService(WalletRepository walletRepository, SystemAccountService systemAccountService,
                           TransactionRepository transactionRepository, AuditLogRepository auditLogRepository,
-                          LedgerService ledgerService, OutboxEventRepository outboxEventRepository) {
+                          LedgerService ledgerService, OutboxEventRepository outboxEventRepository,
+                          ObjectMapper objectMapper) {
         this.walletRepository = walletRepository;
         this.systemAccountService = systemAccountService;
         this.transactionRepository = transactionRepository;
         this.auditLogRepository = auditLogRepository;
         this.ledgerService = ledgerService;
         this.outboxEventRepository = outboxEventRepository;
+        this.objectMapper = objectMapper;
     }
 
     public BalanceResponse getBalance(String userId) {
@@ -76,9 +83,11 @@ public class WalletService {
 
         ledgerService.postTransfer(txn, externalWallet, userWallet, amount);
 
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("walletId", userWallet.getId());
+        payload.put("amount", amount);
         outboxEventRepository.save(new OutboxEvent(
-                "Transaction", txn.getId(), "deposit.completed",
-                "{\"walletId\":\"" + userWallet.getId() + "\",\"amount\":" + amount + "}"));
+                "Transaction", txn.getId(), "deposit.completed", writeJson(payload)));
 
         return toResponse(savedUserWallet);
     }
@@ -90,6 +99,14 @@ public class WalletService {
 
     private BalanceResponse toResponse(Wallet wallet) {
         return new BalanceResponse(wallet.getId(), wallet.getBalance());
+    }
+
+    private String writeJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize outbox event payload", e);
+        }
     }
 
 }

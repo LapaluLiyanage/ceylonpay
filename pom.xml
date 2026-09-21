@@ -63,14 +63,33 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Retries the optimistic-locking race in TransferService instead of failing the whole request. -->
+        <!-- Spring Boot 4's default JSON stack is Jackson 3 (tools.jackson.*), used transparently by
+             Spring MVC's own converters. IdempotencyService/OutboxEvent payloads are (de)serialized
+             explicitly with a classic Jackson 2 ObjectMapper (same major version jjwt-jackson already
+             pulls in transitively as a runtime-only dep) — pin it as a compile dependency so that
+             usage resolves, and so Spring Boot's dual Jackson 2/3 autoconfiguration exposes a
+             com.fasterxml.jackson.databind.ObjectMapper bean alongside the Jackson 3 one MVC uses. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+
+        <!-- Retries the optimistic-locking race in TransferService instead of failing the whole request.
+             Not managed by the Spring Boot 4.x BOM, so its version is pinned explicitly. -->
         <dependency>
             <groupId>org.springframework.retry</groupId>
             <artifactId>spring-retry</artifactId>
+            <version>2.0.13</version>
         </dependency>
+        <!-- spring-boot-starter-aop was renamed to spring-boot-starter-aspectj as of Spring Boot 4;
+             required for @Retryable (Spring AOP proxies) to work. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-aop</artifactId>
+            <artifactId>spring-boot-starter-aspectj</artifactId>
         </dependency>
 
         <dependency>

@@ -13,6 +13,8 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, String
 
     List<LedgerEntry> findByWallet_IdOrderByCreatedAtAsc(String walletId);
 
+    void deleteByTransaction_Id(String transactionId);
+
     /**
      * The source-of-truth balance: sum of every CREDIT minus every DEBIT
      * ever posted to this wallet. Used by the reconciliation job to verify

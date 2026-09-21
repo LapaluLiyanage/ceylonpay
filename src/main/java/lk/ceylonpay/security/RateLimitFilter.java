@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Fixed-window rate limiter for the endpoints an attacker or a buggy client
@@ -38,6 +39,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "/api/transfer", 30
     );
 
+    private final AtomicLong lastPruneMillis = new AtomicLong(0);
     private final Map<String, Window> buckets = new ConcurrentHashMap<>();
 
     private static final class Window {
@@ -66,6 +68,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         Window window = buckets.compute(bucketKey, (key, existing) ->
                 (existing == null || now - existing.startMillis >= WINDOW_MILLIS) ? new Window(now) : existing);
         int currentCount = window.count.incrementAndGet();
+        pruneExpiredIfDue(now);
 
         if (currentCount > limit) {
             response.setStatus(429); // 429 Too Many Requests
@@ -84,6 +87,19 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return forwardedFor.split(",")[0].trim();
         }
         return request.getRemoteAddr();
+    }
+
+    /**
+     * Sweeps out windows that have already expired, so {@code buckets} doesn't grow forever
+     * as new client IPs show up. Runs at most once per {@code WINDOW_MILLIS}, gated by a CAS
+     * on {@code lastPruneMillis} so only one request pays for the sweep at a time.
+     */
+    private void pruneExpiredIfDue(long now) {
+        long last = lastPruneMillis.get();
+        if (now - last < WINDOW_MILLIS || !lastPruneMillis.compareAndSet(last, now)) {
+            return;
+        }
+        buckets.values().removeIf(window -> now - window.startMillis >= WINDOW_MILLIS);
     }
 
 }

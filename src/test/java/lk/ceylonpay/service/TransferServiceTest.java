@@ -43,6 +43,15 @@ class TransferServiceTest {
     @Mock
     private AuditLogRepository auditLogRepository;
 
+    @Mock
+    private lk.ceylonpay.repository.OutboxEventRepository outboxEventRepository;
+
+    @Mock
+    private LedgerService ledgerService;
+
+    @Mock
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
     @InjectMocks
     private TransferService transferService;
 

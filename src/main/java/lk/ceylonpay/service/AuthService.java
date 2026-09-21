@@ -61,6 +61,12 @@ public class AuthService {
         User user = userRepository.findByPhone(request.phone())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid phone number or password"));
 
+        // Defense in depth: the system/suspense account (see SystemAccountService) has no real
+        // password anyone knows, but this makes it explicit that it must never be able to log in.
+        if (!"USER".equals(user.getRole())) {
+            throw new InvalidCredentialsException("Invalid phone number or password");
+        }
+
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new InvalidCredentialsException("Invalid phone number or password");
         }

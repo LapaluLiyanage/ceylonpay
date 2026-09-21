@@ -20,6 +20,7 @@ import lk.ceylonpay.repository.OutboxEventRepository;
 import lk.ceylonpay.repository.TransactionRepository;
 import lk.ceylonpay.repository.UserRepository;
 import lk.ceylonpay.repository.WalletRepository;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -41,11 +42,13 @@ public class TransferService {
     private final LedgerService ledgerService;
     private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
+    private final TransferService self;
 
     public TransferService(UserRepository userRepository, WalletRepository walletRepository,
                             TransactionRepository transactionRepository, AuditLogRepository auditLogRepository,
                             OutboxEventRepository outboxEventRepository, LedgerService ledgerService,
-                            IdempotencyService idempotencyService, ObjectMapper objectMapper) {
+                            IdempotencyService idempotencyService, ObjectMapper objectMapper,
+                            @Lazy TransferService self) {
         this.userRepository = userRepository;
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
@@ -54,6 +57,10 @@ public class TransferService {
         this.ledgerService = ledgerService;
         this.idempotencyService = idempotencyService;
         this.objectMapper = objectMapper;
+        // Self-injected Spring proxy: transferIdempotent() below must call transfer() through
+        // this proxy (not a bare `this.transfer(...)`), or @Transactional/@Retryable on transfer()
+        // never actually apply to the idempotent path.
+        this.self = self;
     }
 
     /**
@@ -78,7 +85,9 @@ public class TransferService {
         }
 
         try {
-            TransactionResponse response = transfer(senderUserId, toPhone, amount);
+            // Call through the injected proxy (`self`), not a bare `transfer(...)`, so
+            // @Transactional and @Retryable on transfer() actually take effect here.
+            TransactionResponse response = self.transfer(senderUserId, toPhone, amount);
             idempotencyService.complete(idempotencyKey, 200, writeJson(response));
             return response;
         } catch (RuntimeException e) {

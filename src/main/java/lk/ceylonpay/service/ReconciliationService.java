@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Nightly (and on-demand) back-office check: does every wallet's cached
@@ -46,11 +47,27 @@ public class ReconciliationService {
         for (Wallet wallet : walletRepository.findAll()) {
             BigDecimal cached = wallet.getBalance();
             BigDecimal fromLedger = ledgerEntryRepository.computeBalance(wallet.getId());
+            Optional<ReconciliationDiscrepancy> open =
+                    discrepancyRepository.findByWalletIdAndResolvedFalse(wallet.getId());
+
             if (cached.compareTo(fromLedger) != 0) {
                 log.error("Reconciliation mismatch on wallet {}: cached={} ledger={}",
                         wallet.getId(), cached, fromLedger);
-                found.add(discrepancyRepository.save(
-                        new ReconciliationDiscrepancy(wallet.getId(), cached, fromLedger)));
+                if (open.isPresent()) {
+                    // Still mismatched: update the existing open record instead of piling up duplicates.
+                    ReconciliationDiscrepancy discrepancy = open.get();
+                    discrepancy.setCachedBalance(cached);
+                    discrepancy.setLedgerBalance(fromLedger);
+                    found.add(discrepancyRepository.save(discrepancy));
+                } else {
+                    found.add(discrepancyRepository.save(
+                            new ReconciliationDiscrepancy(wallet.getId(), cached, fromLedger)));
+                }
+            } else if (open.isPresent()) {
+                // The balance now agrees with the ledger: close out the previously open discrepancy.
+                ReconciliationDiscrepancy discrepancy = open.get();
+                discrepancy.setResolved(true);
+                discrepancyRepository.save(discrepancy);
             }
         }
         if (found.isEmpty()) {

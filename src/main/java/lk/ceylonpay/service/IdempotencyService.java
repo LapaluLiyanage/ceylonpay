@@ -57,7 +57,13 @@ public class IdempotencyService {
                 throw new IdempotencyConflictException(
                         "Idempotency-Key '" + key + "' was already used with a different request");
             }
-            return found.getStatus() == IdempotencyStatus.IN_PROGRESS ? Optional.of(found) : existing;
+            if (found.getStatus() == IdempotencyStatus.FAILED) {
+                // The previous attempt with this key failed, so it's safe to reclaim it for a new attempt.
+                found.setStatus(IdempotencyStatus.IN_PROGRESS);
+                repository.save(found);
+                return Optional.empty();
+            }
+            return existing;
         }
 
         try {

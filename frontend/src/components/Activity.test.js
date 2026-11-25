@@ -11,7 +11,7 @@ describe('rowFor', () => {
 
   it('shows held transfers as under review and lets the sender cancel them', () => {
     const row = rowFor({ ...base, direction: 'SENT', status: 'PENDING_REVIEW' });
-    expect(row.stateLabel).toBe('Under review');
+    expect(row.stateLabel).toBe('Held for review');
     expect(row.canCancel).toBe(true);
   });
 

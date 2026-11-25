@@ -1,37 +1,9 @@
 import { useEffect, useState } from 'react';
 import { AppShell } from '../components/AppShell';
-import { Button } from '../components/Button';
-import { FieldLabel, FieldError } from '../components/FormFields';
 import { getSafety, updateSafety } from '../api/safety';
-import { formatMoney, parseAmountInput } from '../utils/money';
-
-const card = { padding: 28, borderRadius: 22, background: '#141614', border: '1px solid rgba(255,255,255,.07)' };
-
-function LimitInput({ value, onChange, placeholder }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '0 14px',
-        height: 52,
-        borderRadius: 12,
-        background: '#0f110f',
-        border: '1px solid rgba(255,255,255,.1)',
-      }}
-    >
-      <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 15, color: 'rgba(242,244,239,.45)' }}>Rs.</span>
-      <input
-        value={value}
-        onChange={onChange}
-        inputMode="decimal"
-        placeholder={placeholder}
-        style={{ flex: 1, minWidth: 0, height: '100%', background: 'transparent', border: 0, color: '#f2f4ef', fontSize: 16 }}
-      />
-    </div>
-  );
-}
+import { parseAmountInput } from '../utils/money';
+import { AmountBox, Banner, ErrorText, Heading, Label, PrimaryButton, C, display } from '../components/ui';
+import { useMedia, DESKTOP_QUERY } from '../components/useMedia';
 
 function parseLimit(raw) {
   if (!String(raw || '').trim()) return { value: null };
@@ -39,6 +11,7 @@ function parseLimit(raw) {
 }
 
 export default function Safety() {
+  const desktop = useMedia(DESKTOP_QUERY);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [frozen, setFrozen] = useState(false);
@@ -86,89 +59,66 @@ export default function Safety() {
     }
   }
 
+  const hours = (h) => `${String(h).padStart(2, '0')}:00`;
+  const saved = message && message !== "Couldn't save. Try again.";
+
   return (
     <AppShell>
-      <main style={{ marginTop: 20, display: 'flex', justifyContent: 'center', animation: 'cp-rise .35s ease both' }}>
-        <div style={{ width: '100%', maxWidth: 520, display: 'grid', gap: 16 }}>
-          {loadError && (
-            <section style={card}>
-              <p style={{ margin: 0, fontSize: 14, color: '#ff9b85' }}>Couldn&apos;t load your safety settings. Refresh to try again.</p>
-            </section>
-          )}
+      <div style={{ display: 'grid', gridTemplateColumns: desktop ? 'repeat(2, minmax(0,1fr))' : 'minmax(0,1fr)', gap: 14, alignItems: 'start', paddingTop: 6 }}>
+        <Heading style={{ gridColumn: '1 / -1' }}>Safety</Heading>
 
-          {loaded && (
-            <>
-              <section style={{ ...card, border: frozen ? '1px solid rgba(255,122,92,.35)' : card.border }}>
-                <h2 style={{ margin: '0 0 6px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, fontWeight: 500 }}>
-                  {frozen ? 'Your wallet is frozen' : 'Freeze wallet'}
-                </h2>
-                <p style={{ margin: '0 0 20px', fontSize: 14, lineHeight: 1.6, color: 'rgba(242,244,239,.55)' }}>
-                  {frozen
-                    ? 'Nobody can send money from your wallet, including you, until you unfreeze it. You can still receive money.'
-                    : 'Think someone has your phone or password? Freeze sending instantly. You can still receive money.'}
-                </p>
-                <Button
-                  variant={frozen ? 'primary' : 'outlineLight'}
-                  style={{ width: '100%' }}
+        {loadError && <Banner style={{ gridColumn: '1 / -1' }}>Couldn&apos;t load your safety settings. Refresh to try again.</Banner>}
+
+        {loaded && (
+          <>
+            <div style={{ background: frozen ? C.grad : C.surface, color: frozen ? '#fff' : C.text, borderRadius: 26, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <span style={{ ...display, fontSize: 20, textTransform: 'uppercase' }}>{frozen ? 'Wallet frozen' : 'Freeze wallet'}</span>
+                <button
+                  role="switch"
+                  aria-checked={frozen}
+                  aria-label="Freeze wallet"
                   disabled={busy}
                   onClick={() => save(!frozen)}
+                  style={{ flex: 'none', width: 60, height: 34, borderRadius: 999, background: frozen ? 'rgba(0,0,0,.35)' : C.surface2, position: 'relative', padding: 0 }}
                 >
-                  {frozen ? 'Unfreeze wallet' : 'Freeze wallet'}
-                </Button>
-              </section>
+                  <span style={{ position: 'absolute', top: 4, left: 4, width: 26, height: 26, borderRadius: '50%', background: frozen ? '#fff' : C.accent, transform: `translateX(${frozen ? 26 : 0}px)`, transition: 'transform .25s' }} />
+                </button>
+              </div>
+              <span style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.9 }}>
+                {frozen
+                  ? 'Sending is switched off. You can still receive money. Unfreeze when you are ready to send again.'
+                  : 'Think someone has your phone or password? Freeze sending instantly. You can still receive money.'}
+              </span>
+              <button
+                onClick={() => save(!frozen)}
+                disabled={busy}
+                style={{ alignSelf: 'flex-start', height: 46, padding: '0 20px', borderRadius: 999, background: frozen ? C.surface : C.grad, boxShadow: frozen ? 'none' : 'inset 0 1px 0 rgba(255,255,255,.25)', color: '#fff', fontSize: 14, fontWeight: 600 }}
+              >
+                {frozen ? 'Unfreeze wallet' : 'Freeze wallet'}
+              </button>
+            </div>
 
-              <section style={card}>
-                <h2 style={{ margin: '0 0 6px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, fontWeight: 500 }}>
-                  Your own limits
-                </h2>
-                <p style={{ margin: '0 0 22px', fontSize: 14, lineHeight: 1.6, color: 'rgba(242,244,239,.55)' }}>
-                  Limits you set on yourself. Leave a box empty for no limit.
-                </p>
-
-                <FieldLabel>Daily limit</FieldLabel>
-                <LimitInput
-                  value={daily}
-                  onChange={(e) => {
-                    setDaily(e.target.value);
-                    setDailyErr('');
-                  }}
-                  placeholder="No limit"
-                />
-                <FieldError>{dailyErr}</FieldError>
-
-                <div style={{ marginTop: 20 }}>
-                  <FieldLabel>
-                    Night limit ({String(nightHours.start).padStart(2, '0')}:00 – {String(nightHours.end).padStart(2, '0')}:00)
-                  </FieldLabel>
-                  <LimitInput
-                    value={night}
-                    onChange={(e) => {
-                      setNight(e.target.value);
-                      setNightErr('');
-                    }}
-                    placeholder="No limit"
-                  />
-                  <FieldError>{nightErr}</FieldError>
-                </div>
-
-                <p style={{ margin: '16px 0 0', fontSize: 12, color: 'rgba(242,244,239,.4)' }}>
-                  Sri Lanka time.
-                  {daily && !parseLimit(daily).error ? ` Daily: up to ${formatMoney(parseLimit(daily).value)}.` : ''}
-                </p>
-
-                <Button variant="primary" style={{ width: '100%', marginTop: 22 }} disabled={busy} onClick={() => save()}>
-                  {busy ? 'Saving…' : 'Save limits'}
-                </Button>
-                {message && (
-                  <p role="status" style={{ margin: '12px 0 0', fontSize: 13, color: 'rgba(242,244,239,.6)' }}>
-                    {message}
-                  </p>
-                )}
-              </section>
-            </>
-          )}
-        </div>
-      </main>
+            <div style={{ background: C.surface, borderRadius: 26, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <span style={{ ...display, fontSize: 20, textTransform: 'uppercase' }}>Your own limits</span>
+              <span style={{ fontSize: 13.5, color: C.soft }}>Limits you set on yourself. Leave a box empty for no limit.</span>
+              <Label>Daily limit</Label>
+              <AmountBox height={54} fontSize={17} wide={false} placeholder="No limit" value={daily} onChange={(e) => { setDaily(e.target.value); setDailyErr(''); }} aria-label="Daily limit in rupees" />
+              <ErrorText>{dailyErr}</ErrorText>
+              <Label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Night limit · {hours(nightHours.start)}–{hours(nightHours.end)}</span>
+                <span style={{ fontWeight: 400, color: C.muted }}>Sri Lanka time.</span>
+              </Label>
+              <AmountBox height={54} fontSize={17} wide={false} placeholder="No limit" value={night} onChange={(e) => { setNight(e.target.value); setNightErr(''); }} aria-label="Night limit in rupees" />
+              <ErrorText>{nightErr}</ErrorText>
+              <PrimaryButton knob={null} height={52} disabled={busy} onClick={() => save()}>
+                Save limits
+              </PrimaryButton>
+              {message && <Banner tone={saved ? 'ok' : 'error'} style={{ padding: '10px 12px', fontSize: 13 }}>{message}</Banner>}
+            </div>
+          </>
+        )}
+      </div>
     </AppShell>
   );
 }

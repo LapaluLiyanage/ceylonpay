@@ -51,6 +51,14 @@ public class SafetyService {
         return toResponse(settingsRepository.save(settings));
     }
 
+    /** System-controlled: blocks this user's outgoing transfers while a scam report against them is open. */
+    @Transactional
+    public void setReviewHold(String userId, boolean hold) {
+        SafetySettings settings = settingsRepository.findById(userId).orElse(new SafetySettings(userId));
+        settings.setReviewHold(hold);
+        settingsRepository.save(settings);
+    }
+
     @Transactional(readOnly = true)
     public boolean isFrozen(String userId) {
         return settingsRepository.findById(userId).map(SafetySettings::isFrozen).orElse(false);
@@ -62,6 +70,9 @@ public class SafetyService {
         SafetySettings settings = settingsRepository.findById(userId).orElse(null);
         if (settings == null) {
             return;
+        }
+        if (settings.isReviewHold()) {
+            throw new TransferBlockedException("Your account is under review, so sending is paused. Contact support.");
         }
         if (settings.isFrozen()) {
             throw new TransferBlockedException("Your wallet is frozen. Unfreeze it in Safety to send money.");

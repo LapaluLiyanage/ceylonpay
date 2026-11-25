@@ -15,6 +15,11 @@ export function cancelTransfer(id) {
   return request(`/api/transfer/${id}/cancel`, { method: 'POST' });
 }
 
+/** "This was a scam": report a completed transfer. The receiver's outgoing money is put on hold. */
+export function reportTransfer(id, note) {
+  return request(`/api/transfer/${id}/report`, { method: 'POST', body: note ? { note } : undefined });
+}
+
 export function getHistory() {
   return request('/api/transactions');
 }

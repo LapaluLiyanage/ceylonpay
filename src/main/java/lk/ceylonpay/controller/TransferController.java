@@ -3,7 +3,10 @@ package lk.ceylonpay.controller;
 import jakarta.validation.Valid;
 import lk.ceylonpay.dto.TransactionResponse;
 import lk.ceylonpay.dto.TransferRequest;
+import lk.ceylonpay.dto.ScamReportRequest;
+import lk.ceylonpay.dto.ScamReportResponse;
 import lk.ceylonpay.service.HeldTransferService;
+import lk.ceylonpay.service.ScamReportService;
 import lk.ceylonpay.service.TransferService;
 import lk.ceylonpay.dto.RiskCheckRequest;
 import lk.ceylonpay.risk.RiskAssessment;
@@ -23,10 +26,21 @@ public class TransferController {
 
     private final TransferService transferService;
     private final HeldTransferService heldTransferService;
+    private final ScamReportService scamReportService;
 
-    public TransferController(TransferService transferService, HeldTransferService heldTransferService) {
+    public TransferController(TransferService transferService, HeldTransferService heldTransferService,
+                              ScamReportService scamReportService) {
         this.transferService = transferService;
         this.heldTransferService = heldTransferService;
+        this.scamReportService = scamReportService;
+    }
+
+    /** "This was a scam": the sender reports a completed transfer; the receiver's outgoing money is put on hold. */
+    @PostMapping("/{id}/report")
+    public ResponseEntity<ScamReportResponse> report(Authentication authentication, @PathVariable String id,
+                                                     @Valid @RequestBody(required = false) ScamReportRequest request) {
+        String note = request == null ? null : request.note();
+        return ResponseEntity.ok(scamReportService.report(authentication.getName(), id, note));
     }
 
     /** Scam check preview: score and reasons for a transfer that has not been sent. */

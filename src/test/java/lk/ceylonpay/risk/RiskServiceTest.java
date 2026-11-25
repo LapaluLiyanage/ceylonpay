@@ -28,10 +28,13 @@ class RiskServiceTest {
     @Mock
     private TransactionRepository transactions;
 
+    @Mock
+    private lk.ceylonpay.repository.ScamReportRepository reports;
+
     /** Midday in Sri Lanka, so the late-night rule stays out of the way. */
     private RiskService service() {
         Instant noon = LocalDateTime.parse("2026-03-10T12:00:00").atZone(COLOMBO).toInstant();
-        return new RiskService(transactions, Clock.fixed(noon, COLOMBO));
+        return new RiskService(transactions, reports, Clock.fixed(noon, COLOMBO));
     }
 
     private LocalDateTime now() {

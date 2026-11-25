@@ -12,6 +12,11 @@ public final class TransactionStatus {
     /** The sender withdrew a held transfer; no money moved. */
     public static final String CANCELLED = "CANCELLED";
 
+    /** A completed transfer that was reported as a scam and pulled back. */
+    public static final String REVERSED = "REVERSED";
+    /** The counter-transfer that pulls money back to the sender of a reversed transfer. */
+    public static final String REVERSAL = "REVERSAL";
+
     private TransactionStatus() {
     }
 

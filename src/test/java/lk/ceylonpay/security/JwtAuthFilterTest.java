@@ -39,11 +39,14 @@ class JwtAuthFilterTest {
         when(request.getHeader("Authorization")).thenReturn("Bearer valid-token");
         when(jwtUtil.isTokenValid("valid-token")).thenReturn(true);
         when(jwtUtil.extractUserId("valid-token")).thenReturn("user-123");
+        when(jwtUtil.extractRole("valid-token")).thenReturn("ADMIN");
 
         new JwtAuthFilter(jwtUtil).doFilterInternal(request, response, filterChain);
 
         assertThat(SecurityContextHolder.getContext().getAuthentication().getPrincipal())
                 .isEqualTo("user-123");
+        assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
+                .extracting(Object::toString).containsExactly("ROLE_ADMIN");
         verify(filterChain).doFilter(request, response);
     }
 

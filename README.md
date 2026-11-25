@@ -125,6 +125,10 @@ Access tokens last 15 minutes. Login also returns a **refresh token** (30 days, 
 
 Off by default, because codes are only useful once an SMS provider is connected. When `CEYLONPAY_OTP_ENABLED=true`: new accounts must verify their phone (a 6-digit code) before they can send money, and a transfer that carries a risk warning also needs a fresh code texted to the sender, valid only for that recipient and amount. Codes last 5 minutes, allow 5 wrong tries, and can be re-requested every 30 seconds. Existing accounts are treated as verified. Messages go through the `SmsSender` interface; the built-in implementation only logs them (development), so add one for your provider (Dialog, Mobitel or a bulk-SMS gateway) and set `ceylonpay.sms.provider` to its name. For local demos, `CEYLONPAY_SMS_DEV_CODE_IN_RESPONSE=true` returns the code in the API response and shows it in the UI. Never set that in production.
 
+## Rate limiting
+
+Login, registration, token refresh, codes, transfers and name lookups are limited per client address and path (for example 10 logins a minute). By default the counts live in the app's memory, which is right for a single instance. With several instances each would count separately, so set `CEYLONPAY_RATE_LIMIT_STORE=redis` and `SPRING_DATA_REDIS_URL` (for example `redis://host:6379`) to share the counts. If Redis cannot be reached, requests are let through and the error is logged, so a Redis outage does not stop payments.
+
 ## Events (outbox)
 
 Every transfer, hold, cancellation, report and reversal writes an event to the `outbox_events` table in the same database transaction, so an event exists if and only if the money moved. `OutboxPublisher` then sends them on, at-least-once, through the `EventPublisher` interface. Choose the sink with `CEYLONPAY_EVENTS_SINK`:

@@ -10,18 +10,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Fixed-window rate limiter for the endpoints an attacker or a buggy client
  * would hammer: login/register (credential stuffing, account enumeration)
- * and transfer (automated draining). This is the in-memory equivalent of
- * what a production deployment would run against Redis so limits hold
- * across multiple instances — swapping the {@code ConcurrentHashMap} below
- * for a Redis-backed counter is a drop-in change; the request-handling
- * logic doesn't need to change.
+ * and transfer (automated draining). Counting is delegated to a {@link RateLimitStore}:
+ * in memory by default, or Redis ({@code ceylonpay.rate-limit.store=redis}) so the
+ * limits hold across several app instances.
  *
  * <p>Deliberately implemented as a plain servlet filter (not a Spring MVC
  * interceptor) so it runs before Spring Security's authentication filter —
@@ -50,17 +45,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Value("${ceylonpay.rate-limit.enabled:true}")
     private boolean enabled = true;
 
-    private final AtomicLong lastPruneMillis = new AtomicLong(0);
-    private final Map<String, Window> buckets = new ConcurrentHashMap<>();
+    private final RateLimitStore store;
 
-    private static final class Window {
-        final long startMillis;
-        final AtomicInteger count;
-
-        Window(long startMillis) {
-            this.startMillis = startMillis;
-            this.count = new AtomicInteger(0);
-        }
+    public RateLimitFilter(RateLimitStore store) {
+        this.store = store;
     }
 
     @Override
@@ -74,14 +62,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         int limit = LIMITS.get(path);
         String bucketKey = path + '|' + clientKey(request);
-        long now = System.currentTimeMillis();
 
-        Window window = buckets.compute(bucketKey, (key, existing) ->
-                (existing == null || now - existing.startMillis >= WINDOW_MILLIS) ? new Window(now) : existing);
-        int currentCount = window.count.incrementAndGet();
-        pruneExpiredIfDue(now);
-
-        if (currentCount > limit) {
+        if (store.increment(bucketKey, WINDOW_MILLIS) > limit) {
             response.setStatus(429); // 429 Too Many Requests
             response.setContentType("application/json");
             response.getWriter().write("{\"error\":\"Too many requests. Please try again in a minute.\"}");
@@ -98,19 +80,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return forwardedFor.split(",")[0].trim();
         }
         return request.getRemoteAddr();
-    }
-
-    /**
-     * Sweeps out windows that have already expired, so {@code buckets} doesn't grow forever
-     * as new client IPs show up. Runs at most once per {@code WINDOW_MILLIS}, gated by a CAS
-     * on {@code lastPruneMillis} so only one request pays for the sweep at a time.
-     */
-    private void pruneExpiredIfDue(long now) {
-        long last = lastPruneMillis.get();
-        if (now - last < WINDOW_MILLIS || !lastPruneMillis.compareAndSet(last, now)) {
-            return;
-        }
-        buckets.values().removeIf(window -> now - window.startMillis >= WINDOW_MILLIS);
     }
 
 }

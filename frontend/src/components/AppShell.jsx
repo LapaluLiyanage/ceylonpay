@@ -1,5 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { LANGUAGES } from '../i18n/strings';
 import { toDisplayPhone } from '../utils/phone';
 
 const NAV_ITEMS = [
@@ -12,6 +14,7 @@ const NAV_ITEMS = [
 
 export function AppShell({ children }) {
   const { user, logout } = useAuth();
+  const { lang, setLang } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const navItems = user?.role === 'ADMIN' ? [...NAV_ITEMS, { path: '/admin', label: 'Review' }] : NAV_ITEMS;
@@ -65,6 +68,26 @@ export function AppShell({ children }) {
             })}
           </nav>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div role="group" aria-label="Language" style={{ display: 'flex', gap: 2, padding: 3, borderRadius: 999, background: '#181b18' }}>
+              {LANGUAGES.map((l) => (
+                <button
+                  key={l.code}
+                  onClick={() => setLang(l.code)}
+                  aria-pressed={lang === l.code}
+                  title={l.name}
+                  style={{
+                    padding: '5px 9px',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    background: lang === l.code ? '#c9f24d' : 'transparent',
+                    color: lang === l.code ? '#131707' : 'rgba(242,244,239,.6)',
+                  }}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
             <div style={{ textAlign: 'right', lineHeight: 1.3 }}>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{user?.name}</div>
               <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 12, color: 'rgba(242,244,239,.45)' }}>

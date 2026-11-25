@@ -5,6 +5,8 @@ import { timestampLabel } from '../components/Activity';
 import { getBalance } from '../api/wallet';
 import { transfer, riskCheck } from '../api/transfer';
 import { lookupUser } from '../api/users';
+import { useLanguage } from '../context/LanguageContext';
+import { reasonText } from '../i18n/strings';
 import { ApiError } from '../api/client';
 import { formatMoney, parseAmountInput } from '../utils/money';
 import { digitsOnly, groupPhone, phoneError, toApiPhone, toDisplayPhone } from '../utils/phone';
@@ -20,6 +22,7 @@ const FAIL_COPY = {
 
 export default function Transfer() {
   const navigate = useNavigate();
+  const { lang, t } = useLanguage();
   const [balance, setBalance] = useState(0);
   const [balanceError, setBalanceError] = useState(false);
   const [phone, setPhone] = useState('');
@@ -262,20 +265,21 @@ export default function Transfer() {
                   }}
                 >
                   <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>
-                    {draft.risk.outcome === 'HOLD' ? 'We need to review this transfer first' : 'This transfer looks risky'}
+                    {draft.risk.outcome === 'HOLD' ? t('holdTitle') : t('warnTitle')}
                   </p>
                   <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
                     {draft.risk.reasons.map((r) => (
-                      <li key={r.code}>{r.message}</li>
+                      <li key={r.code}>{reasonText(r, lang)}</li>
                     ))}
                   </ul>
                   {draft.risk.outcome === 'WARN' && (
                     <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, fontWeight: 600 }}>
-                      <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />I understand the risk and want to send anyway
+                      <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
+                      {t('understand')}
                     </label>
                   )}
                   {draft.risk.outcome === 'HOLD' && (
-                    <p style={{ margin: 0, fontSize: 13 }}>No money leaves your wallet until a reviewer approves it. You can cancel any time before then.</p>
+                    <p style={{ margin: 0, fontSize: 13 }}>{t('holdNote')}</p>
                   )}
                 </div>
               )}

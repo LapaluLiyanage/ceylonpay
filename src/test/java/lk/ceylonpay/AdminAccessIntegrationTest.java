@@ -64,6 +64,8 @@ class AdminAccessIntegrationTest {
 
         mockMvc.perform(get("/api/admin/reconciliation").header("Authorization", "Bearer " + userToken))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/admin/mules").header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/admin/reconciliation"))
                 .andExpect(status().isUnauthorized());
 
@@ -79,6 +81,8 @@ class AdminAccessIntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
 
         mockMvc.perform(get("/api/admin/reconciliation").header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/admin/mules").header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
     }
 

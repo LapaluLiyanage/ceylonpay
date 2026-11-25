@@ -72,10 +72,12 @@ public class RiskService {
                 String usualText = usual.setScale(0, RoundingMode.HALF_UP).toPlainString();
                 if (amount.compareTo(usual.multiply(BigDecimal.valueOf(5))) > 0) {
                     reasons.add(new RiskReason("UNUSUAL_AMOUNT",
-                            "This is much more than you usually send (about Rs. " + usualText + ").", 25));
+                            "This is much more than you usually send (about Rs. " + usualText + ").", 25,
+                            java.util.Map.of("usual", usualText)));
                 } else if (amount.compareTo(usual.multiply(BigDecimal.valueOf(3))) > 0) {
                     reasons.add(new RiskReason("LARGER_THAN_USUAL",
-                            "This is more than you usually send (about Rs. " + usualText + ").", 15));
+                            "This is more than you usually send (about Rs. " + usualText + ").", 15,
+                            java.util.Map.of("usual", usualText)));
                 }
             }
         }
@@ -124,10 +126,10 @@ public class RiskService {
         long senders = transactionRepository.countDistinctSendersSince(receiver.getId(), dayAgo);
         if (senders >= 5) {
             reasons.add(new RiskReason("MANY_SENDERS", "This account received money from " + senders
-                    + " different people today.", 20));
+                    + " different people today.", 20, java.util.Map.of("count", String.valueOf(senders))));
         } else if (senders >= 3) {
             reasons.add(new RiskReason("SEVERAL_SENDERS", "This account received money from " + senders
-                    + " different people today.", 10));
+                    + " different people today.", 10, java.util.Map.of("count", String.valueOf(senders))));
         }
 
         if (senders >= 3) {

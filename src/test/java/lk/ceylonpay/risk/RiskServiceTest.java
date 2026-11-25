@@ -108,6 +108,10 @@ class RiskServiceTest {
         assertThat(result.reasons()).extracting(RiskReason::code)
                 .contains("FIRST_PAYMENT", "UNUSUAL_AMOUNT", "MOST_OF_BALANCE", "NEW_RECEIVER", "MANY_SENDERS",
                         "PASS_THROUGH");
+        assertThat(result.reasons()).filteredOn(r -> r.code().equals("MANY_SENDERS"))
+                .singleElement().satisfies(r -> assertThat(r.params()).containsEntry("count", "14"));
+        assertThat(result.reasons()).filteredOn(r -> r.code().equals("UNUSUAL_AMOUNT"))
+                .singleElement().satisfies(r -> assertThat(r.params()).containsEntry("usual", "1000"));
     }
 
 }

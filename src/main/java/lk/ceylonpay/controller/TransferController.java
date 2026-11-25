@@ -43,6 +43,14 @@ public class TransferController {
         return ResponseEntity.ok(scamReportService.report(authentication.getName(), id, note));
     }
 
+    /** Texts the sender a one-time code for this transfer (needed when it carries a risk warning). */
+    @PostMapping("/otp")
+    public ResponseEntity<lk.ceylonpay.dto.OtpSentResponse> requestCode(Authentication authentication,
+                                                                        @Valid @RequestBody RiskCheckRequest request) {
+        return ResponseEntity.ok(transferService.requestTransferCode(authentication.getName(), request.toPhone(),
+                request.amount()));
+    }
+
     /** Scam check preview: score and reasons for a transfer that has not been sent. */
     @PostMapping("/risk-check")
     public ResponseEntity<RiskAssessment> riskCheck(Authentication authentication,
@@ -65,9 +73,9 @@ public class TransferController {
 
         TransactionResponse response = (idempotencyKey != null && !idempotencyKey.isBlank())
                 ? transferService.transferIdempotent(idempotencyKey, authentication.getName(), request.toPhone(), request.amount(),
-                        Boolean.TRUE.equals(request.acknowledgeRisk()))
+                        Boolean.TRUE.equals(request.acknowledgeRisk()), request.otpCode())
                 : transferService.transfer(authentication.getName(), request.toPhone(), request.amount(),
-                        Boolean.TRUE.equals(request.acknowledgeRisk()));
+                        Boolean.TRUE.equals(request.acknowledgeRisk()), request.otpCode());
 
         return ResponseEntity.ok(response);
     }

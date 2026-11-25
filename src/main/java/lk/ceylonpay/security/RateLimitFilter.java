@@ -38,6 +38,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "/api/auth/login", 10,
             "/api/auth/register", 5,
             "/api/auth/refresh", 30,
+            "/api/account/phone/request", 3,
+            "/api/account/phone/verify", 10,
+            "/api/transfer/otp", 5,
             "/api/transfer", 30,
             "/api/transfer/risk-check", 60,
             "/api/users/lookup", 30

@@ -27,8 +27,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class TransferIntegrationTest {
 
-    private static final String SENDER_PHONE = "0755555555";
-    private static final String RECIPIENT_PHONE = "0766666666";
+    private static final String SENDER_PHONE = "+94755555555";
+    private static final String RECIPIENT_PHONE = "+94766666666";
 
     @Autowired
     private MockMvc mockMvc;

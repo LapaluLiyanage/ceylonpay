@@ -59,6 +59,17 @@ public class OutboxEvent {
     @Column(name = "attempts", nullable = false)
     private int attempts = 0;
 
+    /** True once delivery has failed too many times; an admin can requeue it. */
+    @Column(nullable = false)
+    private boolean dead = false;
+
+    @Column(name = "last_error", length = 500)
+    private String lastError;
+
+    /** Earliest time the next delivery attempt may run (backoff); null means right away. */
+    @Column(name = "next_attempt_at")
+    private LocalDateTime nextAttemptAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

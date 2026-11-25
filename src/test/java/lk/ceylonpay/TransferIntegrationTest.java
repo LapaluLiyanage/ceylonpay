@@ -106,7 +106,7 @@ class TransferIntegrationTest {
         String transferResponse = mockMvc.perform(post("/api/transfer")
                         .header("Authorization", "Bearer " + senderToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"toPhone\": \"" + RECIPIENT_PHONE + "\", \"amount\": 200}"))
+                        .content("{\"toPhone\": \"" + RECIPIENT_PHONE + "\", \"amount\": 200, \"acknowledgeRisk\": true}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 

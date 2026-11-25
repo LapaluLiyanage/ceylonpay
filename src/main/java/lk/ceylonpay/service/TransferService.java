@@ -20,6 +20,11 @@ import lk.ceylonpay.repository.OutboxEventRepository;
 import lk.ceylonpay.repository.TransactionRepository;
 import lk.ceylonpay.repository.UserRepository;
 import lk.ceylonpay.repository.WalletRepository;
+import lk.ceylonpay.risk.RiskAssessment;
+import lk.ceylonpay.risk.RiskOutcome;
+import lk.ceylonpay.risk.RiskService;
+import lk.ceylonpay.entity.TransactionStatus;
+import lk.ceylonpay.exception.RiskWarningException;
 import lk.ceylonpay.util.PhoneNumber;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -42,13 +47,14 @@ public class TransferService {
     private final OutboxEventRepository outboxEventRepository;
     private final LedgerService ledgerService;
     private final SafetyService safetyService;
+    private final RiskService riskService;
     private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
     private final TransferService self;
 
     public TransferService(UserRepository userRepository, WalletRepository walletRepository,
                             TransactionRepository transactionRepository, AuditLogRepository auditLogRepository,
-                            OutboxEventRepository outboxEventRepository, LedgerService ledgerService, SafetyService safetyService,
+                            OutboxEventRepository outboxEventRepository, LedgerService ledgerService, SafetyService safetyService, RiskService riskService,
                             IdempotencyService idempotencyService, ObjectMapper objectMapper,
                             @Lazy TransferService self) {
         this.userRepository = userRepository;
@@ -58,6 +64,7 @@ public class TransferService {
         this.outboxEventRepository = outboxEventRepository;
         this.ledgerService = ledgerService;
         this.safetyService = safetyService;
+        this.riskService = riskService;
         this.idempotencyService = idempotencyService;
         this.objectMapper = objectMapper;
         // Self-injected Spring proxy: transferIdempotent() below must call transfer() through
@@ -73,7 +80,8 @@ public class TransferService {
      * later call with that key replays the cached result.
      */
     public TransactionResponse transferIdempotent(String idempotencyKey, String senderUserId,
-                                                   String rawToPhone, BigDecimal amount) {
+                                                   String rawToPhone, BigDecimal amount,
+                                                   boolean acknowledgeRisk) {
         String toPhone = normalizeRecipient(rawToPhone);
         String requestHash = IdempotencyService.hash(senderUserId + "|" + toPhone + "|" + amount);
         Optional<IdempotencyKey> existing = idempotencyService.begin(idempotencyKey, senderUserId, requestHash);
@@ -91,7 +99,7 @@ public class TransferService {
         try {
             // Call through the injected proxy (`self`), not a bare `transfer(...)`, so
             // @Transactional and @Retryable on transfer() actually take effect here.
-            TransactionResponse response = self.transfer(senderUserId, toPhone, amount);
+            TransactionResponse response = self.transfer(senderUserId, toPhone, amount, acknowledgeRisk);
             idempotencyService.complete(idempotencyKey, 200, writeJson(response));
             return response;
         } catch (RuntimeException e) {
@@ -112,7 +120,8 @@ public class TransferService {
             backoff = @Backoff(delay = 50, multiplier = 2)
     )
     @Transactional
-    public TransactionResponse transfer(String senderUserId, String rawToPhone, BigDecimal amount) {
+    public TransactionResponse transfer(String senderUserId, String rawToPhone, BigDecimal amount,
+                                         boolean acknowledgeRisk) {
         String toPhone = normalizeRecipient(rawToPhone);
         Wallet senderWallet = walletRepository.findByUserId(senderUserId)
                 .orElseThrow(() -> new WalletNotFoundException("Sender wallet not found"));
@@ -128,6 +137,14 @@ public class TransferService {
         safetyService.checkOutgoing(senderUserId, senderWallet.getId(), amount);
         if (senderWallet.getBalance().compareTo(amount) < 0) {
             throw new InsufficientBalanceException("Insufficient balance");
+        }
+
+        RiskAssessment risk = riskService.assess(senderWallet, recipientWallet, amount);
+        if (risk.outcome() == RiskOutcome.HOLD) {
+            return holdForReview(senderWallet, recipientWallet, toPhone, amount, risk);
+        }
+        if (risk.outcome() == RiskOutcome.WARN && !acknowledgeRisk) {
+            throw new RiskWarningException(risk);
         }
 
         // Cached balance columns are updated here; @Version on Wallet is what makes this
@@ -150,9 +167,43 @@ public class TransferService {
         outboxEventRepository.save(new OutboxEvent(
                 "Transaction", txn.getId(), "transfer.completed",
                 writeJson(new TransactionResponse(txn.getId(), amount, toPhone,
-                        senderWallet.getBalance(), txn.getCreatedAt()))));
+                        senderWallet.getBalance(), txn.getCreatedAt(), TransactionStatus.SUCCESS, List.of()))));
 
-        return new TransactionResponse(txn.getId(), amount, toPhone, senderWallet.getBalance(), txn.getCreatedAt());
+        return new TransactionResponse(txn.getId(), amount, toPhone, senderWallet.getBalance(), txn.getCreatedAt(),
+                TransactionStatus.SUCCESS, List.of());
+    }
+
+    /**
+     * Records the transfer as waiting for review. No balance changes and no ledger rows: the money
+     * stays with the sender until a reviewer releases it.
+     */
+    private TransactionResponse holdForReview(Wallet sender, Wallet receiver, String toPhone, BigDecimal amount,
+                                              RiskAssessment risk) {
+        Transaction txn = new Transaction(sender, receiver, amount, TransactionStatus.PENDING_REVIEW);
+        transactionRepository.saveAndFlush(txn);
+        String codes = risk.reasons().stream().map(r -> r.code()).collect(java.util.stream.Collectors.joining(","));
+        auditLogRepository.save(new AuditLog(txn, "HELD score=" + risk.score() + " " + codes));
+
+        TransactionResponse response = new TransactionResponse(txn.getId(), amount, toPhone, sender.getBalance(),
+                txn.getCreatedAt(), TransactionStatus.PENDING_REVIEW, risk.reasons());
+        outboxEventRepository.save(new OutboxEvent("Transaction", txn.getId(), "transfer.held", writeJson(response)));
+        return response;
+    }
+
+    /** Scores a transfer without doing it, so the app can show warnings before the sender confirms. */
+    @Transactional(readOnly = true)
+    public RiskAssessment assessRisk(String senderUserId, String rawToPhone, BigDecimal amount) {
+        String toPhone = normalizeRecipient(rawToPhone);
+        Wallet senderWallet = walletRepository.findByUserId(senderUserId)
+                .orElseThrow(() -> new WalletNotFoundException("Sender wallet not found"));
+        User recipientUser = userRepository.findByPhone(toPhone)
+                .orElseThrow(() -> new WalletNotFoundException("Recipient not found"));
+        Wallet recipientWallet = walletRepository.findByUserId(recipientUser.getId())
+                .orElseThrow(() -> new WalletNotFoundException("Recipient wallet not found"));
+        if (senderWallet.getId().equals(recipientWallet.getId())) {
+            throw new InvalidTransferException("Cannot transfer to your own wallet");
+        }
+        return riskService.assess(senderWallet, recipientWallet, amount);
     }
 
     private static String normalizeRecipient(String rawToPhone) {
@@ -174,6 +225,9 @@ public class TransferService {
         return transactionRepository
                 .findBySender_IdOrReceiver_IdOrderByCreatedAtDesc(myWallet.getId(), myWallet.getId())
                 .stream()
+                // The receiver only sees a transfer once money has actually arrived.
+                .filter(txn -> txn.getSender().getId().equals(myWallet.getId())
+                        || TransactionStatus.SUCCESS.equals(txn.getStatus()))
                 .map(txn -> toHistoryResponse(txn, myWallet.getId()))
                 .toList();
     }
@@ -187,7 +241,8 @@ public class TransferService {
                 counterpartyWallet.getUser().getName(),
                 counterpartyWallet.getUser().getPhone(),
                 txn.getAmount(),
-                txn.getCreatedAt()
+                txn.getCreatedAt(),
+                txn.getStatus()
         );
     }
 

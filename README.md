@@ -125,6 +125,15 @@ Access tokens last 15 minutes. Login also returns a **refresh token** (30 days, 
 
 Off by default, because codes are only useful once an SMS provider is connected. When `CEYLONPAY_OTP_ENABLED=true`: new accounts must verify their phone (a 6-digit code) before they can send money, and a transfer that carries a risk warning also needs a fresh code texted to the sender, valid only for that recipient and amount. Codes last 5 minutes, allow 5 wrong tries, and can be re-requested every 30 seconds. Existing accounts are treated as verified. Messages go through the `SmsSender` interface; the built-in implementation only logs them (development), so add one for your provider (Dialog, Mobitel or a bulk-SMS gateway) and set `ceylonpay.sms.provider` to its name. For local demos, `CEYLONPAY_SMS_DEV_CODE_IN_RESPONSE=true` returns the code in the API response and shows it in the UI. Never set that in production.
 
+## Events (outbox)
+
+Every transfer, hold, cancellation, report and reversal writes an event to the `outbox_events` table in the same database transaction, so an event exists if and only if the money moved. `OutboxPublisher` then sends them on, at-least-once, through the `EventPublisher` interface. Choose the sink with `CEYLONPAY_EVENTS_SINK`:
+
+- `log` (default): writes events to the log. Development only.
+- `webhook`: POSTs each event as JSON to `CEYLONPAY_EVENTS_WEBHOOK_URL`, signed with `CEYLONPAY_EVENTS_WEBHOOK_SECRET`. Headers: `X-CeylonPay-Event-Id`, `X-CeylonPay-Event-Type`, `X-CeylonPay-Timestamp` and `X-CeylonPay-Signature` (hex HMAC-SHA256 of `timestamp + "." + body`). The receiver should check the signature and the timestamp, and ignore an event id it has already seen. Any non-2xx answer counts as a failure.
+
+A failed event is retried with backoff (10 s, 20 s, 40 s, up to 10 min). After 5 failures it is parked as dead. Admins see the count of waiting events and the dead ones at `GET /api/admin/outbox` and can put one back with `POST /api/admin/outbox/{id}/requeue`. Several app instances can run at once without sending an event twice. To use Kafka, SQS or RabbitMQ, add one class implementing `EventPublisher`.
+
 ## Admin access
 
 `/api/admin/**` requires the `ADMIN` role (carried as a claim in the JWT). Nobody can become an admin through the API. Register the account first, then set `CEYLONPAY_ADMIN_PHONE` to its phone number and restart; the account is promoted at startup.

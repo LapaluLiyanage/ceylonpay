@@ -37,6 +37,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final Map<String, Integer> LIMITS = Map.of(
             "/api/auth/login", 10,
             "/api/auth/register", 5,
+            "/api/auth/refresh", 30,
             "/api/transfer", 30,
             "/api/transfer/risk-check", 60,
             "/api/users/lookup", 30

@@ -4,6 +4,7 @@ public record AuthResponse(
         String token,
         String userId,
         String name,
-        String role
+        String role,
+        String refreshToken
 ) {
 }

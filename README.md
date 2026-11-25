@@ -117,6 +117,10 @@ cd frontend && npm test   # frontend — Vitest
 - **Mule detection** — the Review page lists accounts that received from 3+ different people in 24 hours *and* pass the money on, are new, or are already reported. An admin can hold such an account (it can still receive, not send) or release it. This is rule-based; a trained model needs real labelled data, and the upheld/dismissed scam reports are what will provide it.
 - **Sinhala, Tamil and English warnings** — pick a language in the header. Risk reasons are returned as stable codes with their numbers, and the app shows fixed translations (`frontend/src/i18n/strings.js`). Have a fluent speaker review the Sinhala and Tamil before launch; the server's English text is the fallback for any unknown code.
 
+## Sessions
+
+Access tokens last 15 minutes. Login also returns a **refresh token** (30 days, stored only as a hash) that the app uses to renew the access token quietly. Refresh tokens rotate on every use; if an already-used token is presented again, the whole login session is revoked. `POST /api/auth/logout` revokes the session. Configure with `jwt.expiration-ms` and `jwt.refresh-expiration-days`.
+
 ## Admin access
 
 `/api/admin/**` requires the `ADMIN` role (carried as a claim in the JWT). Nobody can become an admin through the API. Register the account first, then set `CEYLONPAY_ADMIN_PHONE` to its phone number and restart; the account is promoted at startup.

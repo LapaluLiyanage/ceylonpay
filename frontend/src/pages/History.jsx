@@ -4,6 +4,13 @@ import { AppShell } from '../components/AppShell';
 import { formatMoney } from '../utils/money';
 import { getHistory, cancelTransfer, reportTransfer } from '../api/transfer';
 import { SkeletonRows, ActivityErrorState, ActivityEmptyState, TransactionRow, rowFor } from '../components/Activity';
+import { Banner, Card, Heading, C } from '../components/ui';
+
+const FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'sent', label: 'Sent' },
+  { key: 'received', label: 'Received' },
+];
 
 export default function History() {
   const navigate = useNavigate();
@@ -13,7 +20,7 @@ export default function History() {
   const [filter, setFilter] = useState('all');
   const [reporting, setReporting] = useState(null);
   const [note, setNote] = useState('');
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useState({ text: '', tone: 'ok' });
   // Transfers reported in this visit; the server also refuses a second report, this just hides the button.
   const [reportedIds, setReportedIds] = useState(() => new Set());
 
@@ -34,9 +41,9 @@ export default function History() {
     try {
       await reportTransfer(reporting.id, note.trim());
       setReportedIds((prev) => new Set(prev).add(reporting.id));
-      setNotice('Reported. The receiving account is on hold while we review it.');
+      setNotice({ text: 'Reported. The receiving account is on hold while we review it.', tone: 'ok' });
     } catch (err) {
-      setNotice(err?.message || "Couldn't send the report. Try again.");
+      setNotice({ text: err?.message || "Couldn't send the report. Try again.", tone: 'error' });
     } finally {
       setReporting(null);
       setNote('');
@@ -58,102 +65,73 @@ export default function History() {
     filter === 'sent' ? txs.filter((t) => t.direction === 'SENT') : filter === 'received' ? txs.filter((t) => t.direction === 'RECEIVED') : txs;
   const filterEmpty = hasAny && filtered.length === 0;
 
-  const filters = [
-    { key: 'all', label: 'All' },
-    { key: 'sent', label: 'Sent' },
-    { key: 'received', label: 'Received' },
-  ];
-
   return (
     <AppShell>
-      <main style={{ marginTop: 20, animation: 'cp-rise .35s ease both' }}>
-        <section style={{ padding: 24, borderRadius: 22, background: '#f3f4ef', color: '#14170f' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-            <div>
-              <h2 style={{ margin: '0 0 4px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, fontWeight: 600, letterSpacing: '-.02em' }}>
-                Activity
-              </h2>
-              <p style={{ margin: 0, fontSize: 13, color: 'rgba(20,23,15,.55)' }}>
-                {hasAny ? `${filtered.length} of ${txs.length} transactions` : 'Every transaction on this wallet'}
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 999, background: '#e6e8de' }}>
-              {filters.map((f) => (
-                <button
-                  key={f.key}
-                  onClick={() => setFilter(f.key)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: 999,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    background: filter === f.key ? '#14170f' : 'transparent',
-                    color: filter === f.key ? '#f3f4ef' : 'rgba(20,23,15,.6)',
-                  }}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6 }}>
+        <div>
+          <Heading>Activity</Heading>
+          <span style={{ fontSize: 13, color: C.muted }}>{hasAny ? `${filtered.length} of ${txs.length} transactions` : 'Every transaction on this wallet'}</span>
+        </div>
 
-          {notice && (
-            <p role="status" style={{ margin: '0 0 14px', fontSize: 13, color: 'rgba(20,23,15,.7)' }}>
-              {notice}
-            </p>
-          )}
-          {reporting && (
-            <div style={{ padding: 18, borderRadius: 16, background: '#fff', border: '1px solid rgba(200,70,40,.35)', marginBottom: 14 }}>
-              <p style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 700 }}>Report this transfer as a scam?</p>
-              <p style={{ margin: '0 0 10px', fontSize: 13, color: 'rgba(20,23,15,.6)' }}>
-                {formatMoney(reporting.amount)} to {reporting.counterpartyName}. We&apos;ll put their outgoing money on hold and a reviewer will try to get yours back.
-              </p>
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                maxLength={500}
-                placeholder="What happened? (optional)"
-                rows={3}
-                style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid rgba(20,23,15,.2)', fontSize: 14, marginBottom: 10 }}
-              />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={submitReport} style={{ padding: '10px 14px', borderRadius: 10, background: '#14170f', color: '#f3f4ef', fontSize: 13, fontWeight: 700 }}>
-                  Send report
-                </button>
-                <button onClick={() => setReporting(null)} style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(20,23,15,.25)', fontSize: 13, fontWeight: 700 }}>
-                  Never mind
-                </button>
-              </div>
-            </div>
-          )}
+        <div role="group" aria-label="Filter" style={{ display: 'flex', background: C.surface, borderRadius: 999, padding: 4, gap: 4 }}>
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              aria-pressed={filter === f.key}
+              style={{ flex: 1, height: 40, borderRadius: 999, background: filter === f.key ? C.accent : 'transparent', color: filter === f.key ? '#fff' : C.text, fontSize: 13.5, fontWeight: 500 }}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
 
-          {loading && <SkeletonRows count={4} height={66} />}
-          {!loading && error && <ActivityErrorState onRetry={load} />}
+        {notice.text && <Banner tone={notice.tone}>{notice.text}</Banner>}
+
+        {reporting && (
+          <Card tone="dark" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <b style={{ fontSize: 16 }}>Report this transfer as a scam?</b>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 14, background: 'rgba(255,255,255,.08)', borderRadius: 14, padding: '12px 14px' }}>
+              <span>{reporting.counterpartyName}</span>
+              <b>{formatMoney(reporting.amount)}</b>
+            </div>
+            <span style={{ fontSize: 13.5, lineHeight: 1.5, color: '#DDD8D0' }}>We&apos;ll put their outgoing money on hold and a reviewer will try to get yours back.</span>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={500}
+              placeholder="What happened? (optional)"
+              rows={3}
+              style={{ borderRadius: 14, border: 0, padding: '12px 14px', font: 'inherit', fontSize: 14, resize: 'vertical', background: C.surface2, color: C.text }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={submitReport} style={{ flex: 1, height: 50, borderRadius: 999, background: C.accent, color: '#fff', fontSize: 14.5, fontWeight: 600 }}>
+                Send report
+              </button>
+              <button className="cp-outline" onClick={() => setReporting(null)} style={{ flex: 1, height: 50, borderRadius: 999, border: '1.5px solid rgba(255,255,255,.5)', color: '#fff', fontSize: 14.5 }}>
+                Never mind
+              </button>
+            </div>
+          </Card>
+        )}
+
+        <div style={{ background: C.surface, borderRadius: 24, padding: '6px 16px' }}>
+          {loading && <div style={{ padding: '10px 0' }}><SkeletonRows count={4} /></div>}
+          {!loading && error && <div style={{ padding: '10px 0' }}><ActivityErrorState onRetry={load} /></div>}
           {ready && txs.length === 0 && <ActivityEmptyState onDeposit={() => navigate('/deposit')} />}
-          {filterEmpty && (
-            <div style={{ padding: '30px 24px', borderRadius: 16, background: '#fff', textAlign: 'center' }}>
-              <p style={{ margin: 0, fontSize: 14, color: 'rgba(20,23,15,.6)' }}>No {filter} transactions yet.</p>
-            </div>
-          )}
-          {hasAny && filtered.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {filtered.map((tx) => (
-                <TransactionRow
-                  key={tx.id}
-                  {...rowFor(tx)}
-                  action={
-                    rowFor(tx).canCancel
-                      ? { label: 'Cancel', onClick: () => cancel(tx.id) }
-                      : rowFor(tx).canReport && !reportedIds.has(tx.id)
-                        ? { label: 'Report scam', onClick: () => setReporting(tx) }
-                        : null
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
+          {filterEmpty && <div style={{ padding: '22px 0', fontSize: 14, color: C.muted, lineHeight: 1.5 }}>Nothing here yet. Try another filter.</div>}
+          {hasAny &&
+            filtered.map((tx) => {
+              const row = rowFor(tx);
+              const action = row.canCancel
+                ? { label: 'Cancel', kind: 'cancel', onClick: () => cancel(tx.id) }
+                : row.canReport && !reportedIds.has(tx.id)
+                  ? { label: 'Report scam', kind: 'report', onClick: () => setReporting(tx) }
+                  : null;
+              return <TransactionRow key={tx.id} {...row} action={action} />;
+            })}
+        </div>
+      </div>
     </AppShell>
   );
 }

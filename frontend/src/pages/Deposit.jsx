@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
-import { timestampLabel } from '../components/Activity';
 import { deposit } from '../api/wallet';
 import { ApiError } from '../api/client';
 import { formatMoney, parseAmountInput } from '../utils/money';
-import { Button } from '../components/Button';
-import { FieldLabel, FieldError } from '../components/FormFields';
+import { AmountBox, Banner, Card, ErrorText, Hint, Label, OutlineButton, PageTitle, PrimaryButton, C, display } from '../components/ui';
 
 export default function Deposit() {
   const navigate = useNavigate();
@@ -55,139 +53,79 @@ export default function Deposit() {
 
   return (
     <AppShell>
-      <main style={{ marginTop: 20, display: 'flex', justifyContent: 'center', animation: 'cp-rise .35s ease both' }}>
-        <div style={{ width: '100%', maxWidth: 520 }}>
-          {stage === 'form' && (
-            <section style={{ padding: 28, borderRadius: 22, background: '#141614', border: '1px solid rgba(255,255,255,.07)' }}>
-              <h2 style={{ margin: '0 0 6px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 500, letterSpacing: '-.02em' }}>
-                Deposit
-              </h2>
-              <p style={{ margin: '0 0 26px', fontSize: 14, color: 'rgba(242,244,239,.5)' }}>Money lands in your wallet right away.</p>
-
-              <form onSubmit={handleSubmit}>
-                <FieldLabel>Amount</FieldLabel>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '0 18px',
-                    height: 72,
-                    borderRadius: 16,
-                    background: '#0f110f',
-                    border: '1px solid rgba(255,255,255,.1)',
-                  }}
-                >
-                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, color: 'rgba(242,244,239,.45)' }}>Rs.</span>
-                  <input
-                    value={amount}
-                    onChange={(e) => {
-                      setAmount(e.target.value);
-                      setError('');
-                    }}
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      height: '100%',
-                      background: 'transparent',
-                      border: 0,
-                      color: '#f2f4ef',
-                      fontFamily: "'Space Grotesk',sans-serif",
-                      fontSize: 34,
-                      fontWeight: 500,
-                      letterSpacing: '-.02em',
-                    }}
-                  />
-                </div>
-                <FieldError>{error}</FieldError>
-                {!error && <p style={{ margin: '10px 0 0', fontSize: 13, color: 'rgba(242,244,239,.4)' }}>Minimum Rs. 1.00</p>}
-
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
-                  {[500, 1000, 5000].map((v) => (
-                    <button
-                      type="button"
-                      key={v}
-                      onClick={() => pick(v)}
-                      style={{
-                        padding: '10px 16px',
-                        borderRadius: 999,
-                        background: '#1f231f',
-                        border: '1px solid rgba(255,255,255,.09)',
-                        color: '#f2f4ef',
-                        fontFamily: "'Space Grotesk',sans-serif",
-                        fontSize: 14,
-                      }}
-                    >
-                      Rs. {v.toLocaleString('en-US')}
-                    </button>
-                  ))}
-                </div>
-
-                {netError && (
-                  <div style={{ marginTop: 20, padding: 14, borderRadius: 12, background: 'rgba(255,122,92,.1)', border: '1px solid rgba(255,122,92,.3)' }}>
-                    <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: '#ffb8a6' }}>Deposit didn&apos;t go through</p>
-                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: 'rgba(255,184,166,.8)' }}>
-                      The server didn&apos;t respond. No money left or entered your wallet — press Add money to try again.
-                    </p>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', gap: 12, marginTop: 26, flexWrap: 'wrap' }}>
-                  <Button type="button" variant="outlineLight" style={{ flex: '0 1 120px' }} onClick={() => navigate('/dashboard')}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" variant="primary" style={{ flex: '1 1 180px', minWidth: 0 }}>
-                    {busy ? 'Adding…' : 'Add money'}
-                  </Button>
-                </div>
-              </form>
-            </section>
-          )}
-
-          {stage === 'done' && (
-            <section style={{ padding: '32px 28px', borderRadius: 22, background: '#f3f4ef', color: '#14170f', textAlign: 'center', animation: 'cp-rise .3s ease both' }}>
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  margin: '0 auto 20px',
-                  borderRadius: 16,
-                  background: '#c9f24d',
-                  color: '#131707',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 26,
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6 }}>
+        {stage === 'form' && (
+          <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <PageTitle sub="Money lands in your wallet right away.">Deposit</PageTitle>
+            <Card style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <Label>Amount</Label>
+              <AmountBox
+                height={66}
+                fontSize={26}
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setError('');
                 }}
-              >
-                ✓
+                aria-label="Amount in rupees"
+              />
+              {error ? <ErrorText>{error}</ErrorText> : <Hint>Minimum Rs. 1.00</Hint>}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[500, 1000, 5000].map((v) => (
+                  <button
+                    type="button"
+                    key={v}
+                    className="cp-outline"
+                    onClick={() => pick(v)}
+                    style={{ height: 38, padding: '0 14px', borderRadius: 999, border: `1.5px solid ${C.outline}`, fontSize: 13 }}
+                  >
+                    Rs. {v.toLocaleString('en-US')}
+                  </button>
+                ))}
               </div>
-              <h2 style={{ margin: '0 0 6px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: '-.02em' }}>
-                Added {formatMoney(depositedAmount)}
-              </h2>
-              <p style={{ margin: '0 0 24px', fontSize: 14, color: 'rgba(20,23,15,.6)' }}>
-                {timestampLabel(new Date().toISOString())}
-              </p>
-              <div style={{ padding: 20, borderRadius: 16, background: '#fff', marginBottom: 24 }}>
-                <p style={{ margin: '0 0 6px', fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(20,23,15,.5)' }}>New balance</p>
-                <p style={{ margin: 0, fontFamily: "'Space Grotesk',sans-serif", fontSize: 34, fontWeight: 600, letterSpacing: '-.02em' }}>
-                  {formatMoney(newBalance)}
-                </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 10, marginTop: 4, borderTop: `1px solid ${C.line}`, fontSize: 12.5, color: C.muted }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent }} />
+                From: External Funding Source (simulated)
               </div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <Button variant="dark" style={{ flex: '1 1 140px', minWidth: 0 }} onClick={() => navigate('/transfer')}>
-                  Send money
-                </Button>
-                <Button variant="outlineDark" style={{ flex: '1 1 140px', minWidth: 0 }} onClick={() => navigate('/dashboard')}>
-                  Back to wallet
-                </Button>
+            </Card>
+            {netError && (
+              <Banner>
+                <b style={{ display: 'block', marginBottom: 4 }}>Deposit didn&apos;t go through</b>
+                We couldn&apos;t reach the server. Nothing was added to your wallet. Try again in a moment.
+              </Banner>
+            )}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <PrimaryButton type="submit" disabled={busy} style={{ flex: 1 }}>
+                {busy ? 'Adding…' : 'Add money'}
+              </PrimaryButton>
+              <OutlineButton type="button" height={56} onClick={() => navigate('/dashboard')} style={{ fontSize: 15, padding: '0 20px' }}>
+                Cancel
+              </OutlineButton>
+            </div>
+          </form>
+        )}
+
+        {stage === 'done' && (
+          <>
+            <Card tone="dark" style={{ borderRadius: 28, padding: 24, display: 'flex', flexDirection: 'column', gap: 14, marginTop: 20 }}>
+              <span style={{ width: 54, height: 54, borderRadius: '50%', background: C.accent, display: 'grid', placeItems: 'center', fontSize: 24 }} aria-hidden="true">✓</span>
+              <span style={{ ...display, fontSize: 24, lineHeight: 1.2, textTransform: 'uppercase' }}>Deposited {formatMoney(depositedAmount)}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,.15)', paddingTop: 14, fontSize: 14 }}>
+                <span style={{ color: '#CFCAC2' }}>New balance</span>
+                <b>{formatMoney(newBalance)}</b>
               </div>
-            </section>
-          )}
-        </div>
-      </main>
+            </Card>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <PrimaryButton knob={null} onClick={() => navigate('/dashboard')} style={{ flex: 1 }}>
+                Go to Home
+              </PrimaryButton>
+              <OutlineButton height={56} onClick={() => setStage('form')} style={{ flex: 1, fontSize: 15 }}>
+                Deposit again
+              </OutlineButton>
+            </div>
+          </>
+        )}
+      </div>
     </AppShell>
   );
 }

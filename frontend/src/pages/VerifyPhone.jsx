@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
-import { Button } from '../components/Button';
-import { FieldLabel, FieldError } from '../components/FormFields';
 import { useAuth } from '../context/AuthContext';
 import { requestPhoneCode, verifyPhone } from '../api/account';
 import { toDisplayPhone } from '../utils/phone';
+import { Card, ErrorText, Label, OutlineButton, PageTitle, PrimaryButton, C, mono } from '../components/ui';
 
 export default function VerifyPhone() {
   const navigate = useNavigate();
@@ -49,16 +48,16 @@ export default function VerifyPhone() {
 
   return (
     <AppShell>
-      <main style={{ marginTop: 20, display: 'flex', justifyContent: 'center', animation: 'cp-rise .35s ease both' }}>
-        <section style={{ width: '100%', maxWidth: 480, padding: 28, borderRadius: 22, background: '#141614', border: '1px solid rgba(255,255,255,.07)' }}>
-          <h2 style={{ margin: '0 0 6px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 500 }}>Verify your phone</h2>
-          <p style={{ margin: '0 0 22px', fontSize: 14, lineHeight: 1.6, color: 'rgba(242,244,239,.55)' }}>
-            {user?.phone ? `${toDisplayPhone(user.phone)}. ` : ''}
-            {info} You need this before you can send money.
-          </p>
-          <form onSubmit={submit}>
-            <FieldLabel>6-digit code</FieldLabel>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6 }}>
+        <PageTitle sub={`We text a 6-digit code to ${user?.phone ? toDisplayPhone(user.phone) : 'your phone'}. You need it before you can send money.`}>
+          Verify your phone
+        </PageTitle>
+        <form onSubmit={submit} noValidate>
+          <Card style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Label htmlFor="otp">6-digit code</Label>
             <input
+              id="otp"
+              className="cp-field"
               value={code}
               onChange={(e) => {
                 setCode(e.target.value.replace(/\D/g, '').slice(0, 6));
@@ -66,32 +65,24 @@ export default function VerifyPhone() {
               }}
               inputMode="numeric"
               autoComplete="one-time-code"
-              placeholder="000000"
-              style={{
-                width: '100%',
-                height: 56,
-                padding: '0 14px',
-                borderRadius: 12,
-                background: '#0f110f',
-                border: '1px solid rgba(255,255,255,.1)',
-                color: '#f2f4ef',
-                fontFamily: "'Space Grotesk',sans-serif",
-                fontSize: 26,
-                letterSpacing: '.3em',
-              }}
+              maxLength={6}
+              placeholder="••••••"
+              style={{ height: 58, borderRadius: 16, background: C.surface2, padding: '0 16px', ...mono, fontSize: 24, letterSpacing: '.5em' }}
             />
-            <FieldError>{error}</FieldError>
-            <div style={{ display: 'flex', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>
-              <Button type="button" variant="outlineLight" style={{ flex: '1 1 150px' }} onClick={resend} disabled={busy}>
+            <ErrorText>{error}</ErrorText>
+            <span style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.45 }}>{info}</span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <OutlineButton type="button" height={44} disabled={busy} onClick={resend} style={{ fontSize: 13 }}>
                 Send a new code
-              </Button>
-              <Button type="submit" variant="primary" style={{ flex: '1 1 150px' }} disabled={busy}>
-                Verify
-              </Button>
+              </OutlineButton>
             </div>
-          </form>
-        </section>
-      </main>
+            <PrimaryButton type="submit" knob={null} height={52} disabled={busy || code.length !== 6}>
+              {busy ? 'Checking…' : 'Verify'}
+            </PrimaryButton>
+            <span style={{ fontSize: 12, color: C.muted }}>Codes last 5 minutes. After 5 wrong tries you&apos;ll need a new one.</span>
+          </Card>
+        </form>
+      </div>
     </AppShell>
   );
 }

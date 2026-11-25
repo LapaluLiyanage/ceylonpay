@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../context/AuthContext';
-import { FieldLabel } from '../components/FormFields';
 import { buildPayLink } from '../utils/payLink';
 import { toDisplayPhone } from '../utils/phone';
+import { AmountBox, Card, GradButton, Heading, Label, Pill, C, mono } from '../components/ui';
 
 export default function Receive() {
   const { user } = useAuth();
@@ -13,6 +13,7 @@ export default function Receive() {
   const [copied, setCopied] = useState(false);
 
   const link = buildPayLink(window.location.origin, user?.phone, amount);
+  const hasAmount = link.includes('amount=');
 
   useEffect(() => {
     let current = true;
@@ -36,35 +37,38 @@ export default function Receive() {
 
   return (
     <AppShell>
-      <main style={{ marginTop: 20, display: 'flex', justifyContent: 'center', animation: 'cp-rise .35s ease both' }}>
-        <section style={{ width: '100%', maxWidth: 520, padding: 28, borderRadius: 22, background: '#141614', border: '1px solid rgba(255,255,255,.07)' }}>
-          <h2 style={{ margin: '0 0 6px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 500 }}>Get paid</h2>
-          <p style={{ margin: '0 0 22px', fontSize: 14, color: 'rgba(242,244,239,.5)' }}>
-            Show this code. Whoever scans it lands on the Send page with your number{amount ? ' and the amount' : ''} filled in, and still checks the name before paying.
-          </p>
-
-          <FieldLabel>Amount (optional)</FieldLabel>
-          <input
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            inputMode="decimal"
-            placeholder="Any amount"
-            style={{ width: '100%', height: 50, padding: '0 14px', borderRadius: 12, background: '#0f110f', border: '1px solid rgba(255,255,255,.09)', color: '#f2f4ef', fontSize: 16 }}
-          />
-
-          <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-            {qr && <img src={qr} alt={`QR code to pay ${toDisplayPhone(user?.phone)}`} width={280} height={280} style={{ borderRadius: 16, background: '#fff' }} />}
-            <p style={{ margin: 0, fontFamily: "'Space Grotesk',sans-serif", fontSize: 16 }}>{user?.name} · {toDisplayPhone(user?.phone)}</p>
-            <button
-              type="button"
-              onClick={copy}
-              style={{ padding: '9px 14px', borderRadius: 10, background: 'rgba(255,255,255,.08)', color: '#f2f4ef', fontSize: 13 }}
-            >
-              {copied ? 'Copied' : 'Copy link'}
-            </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <Heading>
+            Get <Pill>paid</Pill>
+          </Heading>
+          <span style={{ fontSize: 14, color: C.soft, lineHeight: 1.5 }}>
+            Whoever scans this lands on Send with your number{hasAmount ? ' and the amount' : ' (and amount, if set)'} filled in — and still checks your name before paying.
+          </span>
+        </div>
+        <Card style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 16 }}>
+          <Label>Amount (optional)</Label>
+          <AmountBox height={54} fontSize={18} wide={false} placeholder="Any amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        </Card>
+        <Card tone="dark" style={{ borderRadius: 30, padding: 22, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+          <div style={{ background: '#fff', borderRadius: 22, padding: 14, width: 'min(100%, 250px)', aspectRatio: '1', display: 'grid', placeItems: 'center' }}>
+            {qr && <img src={qr} alt={`QR code to pay ${toDisplayPhone(user?.phone)}`} style={{ width: '100%', height: '100%', imageRendering: 'pixelated' }} />}
           </div>
-        </section>
-      </main>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 17, fontWeight: 700 }}>{user?.name}</div>
+            <div style={{ ...mono, fontSize: 13, color: '#CFCAC2', marginTop: 3 }}>{toDisplayPhone(user?.phone)}</div>
+          </div>
+          <span style={{ height: 30, padding: '0 12px', borderRadius: 999, background: C.accent, fontSize: 12.5, fontWeight: 600, display: 'flex', alignItems: 'center' }}>
+            {hasAmount ? `Asks for Rs. ${Number(amount.replace(/[,\s]/g, '')).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : 'Any amount'}
+          </span>
+        </Card>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: C.surface, borderRadius: 999, padding: '5px 5px 5px 16px' }}>
+          <span style={{ flex: 1, minWidth: 0, ...mono, fontSize: 11.5, color: C.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{link}</span>
+          <GradButton height={42} onClick={copy} style={{ fontSize: 13 }}>
+            {copied ? 'Copied' : 'Copy link'}
+          </GradButton>
+        </div>
+      </div>
     </AppShell>
   );
 }

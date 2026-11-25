@@ -3,6 +3,8 @@ package lk.ceylonpay.service;
 import lk.ceylonpay.dto.AuthResponse;
 import lk.ceylonpay.dto.LoginRequest;
 import lk.ceylonpay.dto.RegisterRequest;
+import lk.ceylonpay.dto.OtpSentResponse;
+import lk.ceylonpay.entity.OtpPurpose;
 import lk.ceylonpay.entity.User;
 import lk.ceylonpay.entity.Wallet;
 import lk.ceylonpay.exception.InvalidCredentialsException;
@@ -24,14 +26,17 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final WalletRepository walletRepository;
     private final RefreshTokenService refreshTokenService;
+    private final OtpService otpService;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
-                        WalletRepository walletRepository, RefreshTokenService refreshTokenService) {
+                        WalletRepository walletRepository, RefreshTokenService refreshTokenService,
+                        OtpService otpService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.walletRepository = walletRepository;
         this.refreshTokenService = refreshTokenService;
+        this.otpService = otpService;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -48,6 +53,8 @@ public class AuthService {
         user.setPhone(phone);
         user.setNic(request.nic());
         user.setPassword(passwordEncoder.encode(request.password()));
+        // With codes switched off there is nothing to verify against, so the account counts as verified.
+        user.setPhoneVerified(!otpService.isEnabled());
 
         User saved = userRepository.save(user);
 
@@ -56,10 +63,14 @@ public class AuthService {
         wallet.setBalance(BigDecimal.ZERO);
         walletRepository.save(wallet);
 
+        if (!saved.isPhoneVerified()) {
+            otpService.send(saved, OtpPurpose.REGISTER, null);
+        }
+
         String token = jwtUtil.generateToken(saved.getId(), saved.getRole());
 
         return new AuthResponse(token, saved.getId(), saved.getName(), saved.getRole(),
-                refreshTokenService.startSession(saved.getId()));
+                refreshTokenService.startSession(saved.getId()), saved.isPhoneVerified());
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -81,7 +92,7 @@ public class AuthService {
 
         String token = jwtUtil.generateToken(user.getId(), user.getRole());
         return new AuthResponse(token, user.getId(), user.getName(), user.getRole(),
-                refreshTokenService.startSession(user.getId()));
+                refreshTokenService.startSession(user.getId()), user.isPhoneVerified());
     }
 
     /** Swaps a valid refresh token for a fresh access token and the next refresh token. */
@@ -92,7 +103,24 @@ public class AuthService {
                 .filter(u -> "USER".equals(u.getRole()) || "ADMIN".equals(u.getRole()))
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid refresh token"));
         return new AuthResponse(jwtUtil.generateToken(user.getId(), user.getRole()), user.getId(), user.getName(),
-                user.getRole(), rotation.newRefreshToken());
+                user.getRole(), rotation.newRefreshToken(), user.isPhoneVerified());
+    }
+
+    public OtpSentResponse requestPhoneCode(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid session"));
+        if (user.isPhoneVerified()) {
+            return new OtpSentResponse(false, null);
+        }
+        return otpService.send(user, OtpPurpose.REGISTER, null);
+    }
+
+    public void verifyPhone(String userId, String code) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid session"));
+        otpService.verify(user, OtpPurpose.REGISTER, code, null);
+        user.setPhoneVerified(true);
+        userRepository.save(user);
     }
 
     public void logout(String refreshToken) {

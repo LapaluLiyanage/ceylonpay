@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** End-to-end: warn then confirm, hold then cancel, hold then approve. */
-@SpringBootTest(properties = "ceylonpay.rate-limit.enabled=false")
+@SpringBootTest(properties = {"ceylonpay.rate-limit.enabled=false", "ceylonpay.otp.enabled=false"})
 @AutoConfigureMockMvc
 class ScamShieldIntegrationTest {
 

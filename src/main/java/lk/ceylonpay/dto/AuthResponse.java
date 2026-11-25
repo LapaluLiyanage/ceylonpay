@@ -5,6 +5,7 @@ public record AuthResponse(
         String userId,
         String name,
         String role,
-        String refreshToken
+        String refreshToken,
+        boolean phoneVerified
 ) {
 }

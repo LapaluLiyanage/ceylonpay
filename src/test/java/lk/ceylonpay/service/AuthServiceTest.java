@@ -57,7 +57,7 @@ class AuthServiceTest {
             saved.setId("user-123");
             return saved;
         });
-        when(jwtUtil.generateToken("user-123")).thenReturn("jwt-token");
+        when(jwtUtil.generateToken("user-123", "USER")).thenReturn("jwt-token");
 
         AuthResponse response = authService.register(request);
 
@@ -79,7 +79,7 @@ class AuthServiceTest {
             saved.setId("user-123");
             return saved;
         });
-        when(jwtUtil.generateToken("user-123")).thenReturn("jwt-token");
+        when(jwtUtil.generateToken("user-123", "USER")).thenReturn("jwt-token");
 
         authService.register(request);
 
@@ -116,7 +116,7 @@ class AuthServiceTest {
         existing.setPassword("hashed-password");
         when(userRepository.findByPhone("+94771234567")).thenReturn(Optional.of(existing));
         when(passwordEncoder.matches("raw-password", "hashed-password")).thenReturn(true);
-        when(jwtUtil.generateToken("user-123")).thenReturn("jwt-token");
+        when(jwtUtil.generateToken("user-123", "USER")).thenReturn("jwt-token");
 
         AuthResponse response = authService.login(request);
 

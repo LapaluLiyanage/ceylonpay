@@ -54,7 +54,7 @@ public class AuthService {
         wallet.setBalance(BigDecimal.ZERO);
         walletRepository.save(wallet);
 
-        String token = jwtUtil.generateToken(saved.getId());
+        String token = jwtUtil.generateToken(saved.getId(), saved.getRole());
 
         return new AuthResponse(token, saved.getId(), saved.getName());
     }
@@ -68,7 +68,7 @@ public class AuthService {
 
         // Defense in depth: the system/suspense account (see SystemAccountService) has no real
         // password anyone knows, but this makes it explicit that it must never be able to log in.
-        if (!"USER".equals(user.getRole())) {
+        if (!"USER".equals(user.getRole()) && !"ADMIN".equals(user.getRole())) {
             throw new InvalidCredentialsException("Invalid phone number or password");
         }
 
@@ -76,7 +76,7 @@ public class AuthService {
             throw new InvalidCredentialsException("Invalid phone number or password");
         }
 
-        String token = jwtUtil.generateToken(user.getId());
+        String token = jwtUtil.generateToken(user.getId(), user.getRole());
         return new AuthResponse(token, user.getId(), user.getName());
     }
 

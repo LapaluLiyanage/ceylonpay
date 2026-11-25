@@ -43,4 +43,11 @@ class JwtUtilTest {
         assertThat(jwtUtil.isTokenValid(alreadyExpiredToken)).isFalse();
     }
 
+    @Test
+    void roleClaimRoundTripsAndDefaultsToUser() {
+        JwtUtil jwtUtil = new JwtUtil(SECRET, 86_400_000L);
+        assertThat(jwtUtil.extractRole(jwtUtil.generateToken("user-123", "ADMIN"))).isEqualTo("ADMIN");
+        assertThat(jwtUtil.extractRole(jwtUtil.generateToken("user-123"))).isEqualTo("USER");
+    }
+
 }

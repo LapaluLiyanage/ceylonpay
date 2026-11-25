@@ -23,10 +23,15 @@ public class JwtUtil {
     }
 
     public String generateToken(String userId) {
+        return generateToken(userId, "USER");
+    }
+
+    public String generateToken(String userId, String role) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
         return Jwts.builder()
                 .subject(userId)
+                .claim("role", role)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(key)
@@ -40,6 +45,17 @@ public class JwtUtil {
                 .parseSignedClaims(token)
                 .getPayload()
                 .getSubject();
+    }
+
+    /** Role stored in the token; tokens issued before roles existed count as plain users. */
+    public String extractRole(String token) {
+        String role = Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("role", String.class);
+        return role == null ? "USER" : role;
     }
 
     public boolean isTokenValid(String token) {

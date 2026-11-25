@@ -34,6 +34,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
             + "and t.createdAt >= :since and t.status = 'SUCCESS' and t.sender.user.role <> 'SYSTEM'")
     BigDecimal sumReceivedFromUsersSince(@Param("walletId") String walletId, @Param("since") LocalDateTime since);
 
+    /** Wallets that received from at least {@code minSenders} different people since the given moment. */
+    @Query("select new lk.ceylonpay.risk.MuleCandidate(t.receiver.id, count(distinct t.sender.id), sum(t.amount)) "
+            + "from Transaction t where t.status = 'SUCCESS' and t.createdAt >= :since "
+            + "and t.sender.user.role <> 'SYSTEM' group by t.receiver.id "
+            + "having count(distinct t.sender.id) >= :minSenders")
+    List<lk.ceylonpay.risk.MuleCandidate> findReceiversWithManySenders(@Param("since") LocalDateTime since,
+                                                                       @Param("minSenders") long minSenders);
+
     /** Total a wallet has sent since the given moment (used for the user's own daily limit). */
     @Query("select coalesce(sum(t.amount), 0) from Transaction t "
             + "where t.sender.id = :walletId and t.createdAt >= :since and t.status = 'SUCCESS'")

@@ -117,3 +117,15 @@ describe('report and admin API', () => {
     expect(request).toHaveBeenCalledWith('/api/admin/reports/p1/resolve', { method: 'POST', body: { decision: 'UPHOLD' } });
   });
 });
+
+describe('mule admin API', () => {
+  it('lists suspects and holds or releases an account', async () => {
+    const admin = await import('./admin');
+    await admin.getMules();
+    expect(request).toHaveBeenCalledWith('/api/admin/mules?hours=24');
+    await admin.holdAccount('u1');
+    expect(request).toHaveBeenCalledWith('/api/admin/mules/u1/hold', { method: 'POST' });
+    await admin.releaseAccount('u1');
+    expect(request).toHaveBeenCalledWith('/api/admin/mules/u1/release', { method: 'POST' });
+  });
+});

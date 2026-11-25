@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { path: '/deposit', label: 'Deposit' },
   { path: '/transfer', label: 'Send' },
   { path: '/history', label: 'Activity' },
+  { path: '/safety', label: 'Safety' },
 ];
 
 export function AppShell({ children }) {

@@ -4,6 +4,7 @@ import lk.ceylonpay.exception.IdempotencyConflictException;
 import lk.ceylonpay.exception.InsufficientBalanceException;
 import lk.ceylonpay.exception.InvalidCredentialsException;
 import lk.ceylonpay.exception.InvalidTransferException;
+import lk.ceylonpay.exception.TransferBlockedException;
 import lk.ceylonpay.exception.UserAlreadyExistsException;
 import lk.ceylonpay.exception.WalletNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -40,6 +41,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidTransferException.class)
     public ResponseEntity<Map<String, String>> handleInvalidTransfer(InvalidTransferException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(TransferBlockedException.class)
+    public ResponseEntity<Map<String, String>> handleTransferBlocked(TransferBlockedException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
     }
 
     @ExceptionHandler(IdempotencyConflictException.class)

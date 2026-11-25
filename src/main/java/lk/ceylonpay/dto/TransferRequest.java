@@ -13,7 +13,11 @@ public record TransferRequest(
 
         @NotNull
         @DecimalMin(value = "1.00")
-        BigDecimal amount
+        BigDecimal amount,
+
+        /** Set by the client after the sender has seen and accepted a risk warning. */
+        /** Optional; absent means false. */
+        Boolean acknowledgeRisk
 
 ) {
 }

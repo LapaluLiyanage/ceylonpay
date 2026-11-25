@@ -4,6 +4,7 @@ import lk.ceylonpay.exception.IdempotencyConflictException;
 import lk.ceylonpay.exception.InsufficientBalanceException;
 import lk.ceylonpay.exception.InvalidCredentialsException;
 import lk.ceylonpay.exception.InvalidTransferException;
+import lk.ceylonpay.exception.RiskWarningException;
 import lk.ceylonpay.exception.TransferBlockedException;
 import lk.ceylonpay.exception.UserAlreadyExistsException;
 import lk.ceylonpay.exception.WalletNotFoundException;
@@ -46,6 +47,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(TransferBlockedException.class)
     public ResponseEntity<Map<String, String>> handleTransferBlocked(TransferBlockedException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
+    }
+
+    /** 409 with the score and reasons, so the client can show them and ask the sender to confirm. */
+    @ExceptionHandler(RiskWarningException.class)
+    public ResponseEntity<Map<String, Object>> handleRiskWarning(RiskWarningException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "error", e.getMessage(),
+                "outcome", e.getAssessment().outcome().name(),
+                "score", e.getAssessment().score(),
+                "reasons", e.getAssessment().reasons()));
     }
 
     @ExceptionHandler(IdempotencyConflictException.class)

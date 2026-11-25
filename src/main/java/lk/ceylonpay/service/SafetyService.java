@@ -51,6 +51,11 @@ public class SafetyService {
         return toResponse(settingsRepository.save(settings));
     }
 
+    @Transactional(readOnly = true)
+    public boolean isFrozen(String userId) {
+        return settingsRepository.findById(userId).map(SafetySettings::isFrozen).orElse(false);
+    }
+
     /** Throws {@link TransferBlockedException} if the sender's own settings forbid this transfer. */
     @Transactional(readOnly = true)
     public void checkOutgoing(String userId, String senderWalletId, BigDecimal amount) {

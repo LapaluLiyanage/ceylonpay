@@ -56,7 +56,7 @@ public class AuthService {
 
         String token = jwtUtil.generateToken(saved.getId(), saved.getRole());
 
-        return new AuthResponse(token, saved.getId(), saved.getName());
+        return new AuthResponse(token, saved.getId(), saved.getName(), saved.getRole());
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -77,7 +77,7 @@ public class AuthService {
         }
 
         String token = jwtUtil.generateToken(user.getId(), user.getRole());
-        return new AuthResponse(token, user.getId(), user.getName());
+        return new AuthResponse(token, user.getId(), user.getName(), user.getRole());
     }
 
 }

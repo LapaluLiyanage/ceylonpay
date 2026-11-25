@@ -33,22 +33,22 @@ import java.util.List;
 @Service
 public class HeldTransferService {
 
-    private static final int AUDIT_DETAIL_MAX = 255;
-
     private final TransactionRepository transactionRepository;
     private final WalletRepository walletRepository;
     private final AuditLogRepository auditLogRepository;
+    private final AuditTrail auditTrail;
     private final OutboxEventRepository outboxEventRepository;
     private final LedgerService ledgerService;
     private final SafetyService safetyService;
     private final ObjectMapper objectMapper;
 
     public HeldTransferService(TransactionRepository transactionRepository, WalletRepository walletRepository,
-                               AuditLogRepository auditLogRepository, OutboxEventRepository outboxEventRepository,
+                               AuditLogRepository auditLogRepository, AuditTrail auditTrail, OutboxEventRepository outboxEventRepository,
                                LedgerService ledgerService, SafetyService safetyService, ObjectMapper objectMapper) {
         this.transactionRepository = transactionRepository;
         this.walletRepository = walletRepository;
         this.auditLogRepository = auditLogRepository;
+        this.auditTrail = auditTrail;
         this.outboxEventRepository = outboxEventRepository;
         this.ledgerService = ledgerService;
         this.safetyService = safetyService;
@@ -98,7 +98,7 @@ public class HeldTransferService {
         txn.setStatus(TransactionStatus.SUCCESS);
         transactionRepository.saveAndFlush(txn);
         ledgerService.postTransfer(txn, sender, receiver, amount);
-        appendAudit(txn, "APPROVED by " + reviewerId);
+        auditTrail.append(txn.getId(), "APPROVED by " + reviewerId);
 
         TransactionResponse response = new TransactionResponse(txn.getId(), amount,
                 receiver.getUser().getPhone(), sender.getBalance(), txn.getCreatedAt(),
@@ -112,7 +112,7 @@ public class HeldTransferService {
         Transaction txn = pending(transactionId);
         txn.setStatus(TransactionStatus.REJECTED);
         transactionRepository.save(txn);
-        appendAudit(txn, "REJECTED by " + reviewerId);
+        auditTrail.append(txn.getId(), "REJECTED by " + reviewerId);
         outboxEventRepository.save(new OutboxEvent("Transaction", txn.getId(), "transfer.rejected", "{}"));
     }
 
@@ -126,7 +126,7 @@ public class HeldTransferService {
         }
         txn.setStatus(TransactionStatus.CANCELLED);
         transactionRepository.save(txn);
-        appendAudit(txn, "CANCELLED by sender");
+        auditTrail.append(txn.getId(), "CANCELLED by sender");
         outboxEventRepository.save(new OutboxEvent("Transaction", txn.getId(), "transfer.cancelled", "{}"));
     }
 
@@ -137,14 +137,6 @@ public class HeldTransferService {
             throw new InvalidTransferException("This transfer is not waiting for review");
         }
         return txn;
-    }
-
-    private void appendAudit(Transaction txn, String note) {
-        auditLogRepository.findByTransaction_Id(txn.getId()).ifPresent(audit -> {
-            String detail = audit.getDetail() + " | " + note;
-            audit.setDetail(detail.length() > AUDIT_DETAIL_MAX ? detail.substring(0, AUDIT_DETAIL_MAX) : detail);
-            auditLogRepository.save(audit);
-        });
     }
 
     private String writeJson(Object value) {

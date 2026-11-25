@@ -1,7 +1,9 @@
 package lk.ceylonpay.risk;
 
+import lk.ceylonpay.entity.ScamReportStatus;
 import lk.ceylonpay.entity.TransactionStatus;
 import lk.ceylonpay.entity.Wallet;
+import lk.ceylonpay.repository.ScamReportRepository;
 import lk.ceylonpay.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 
@@ -32,10 +34,13 @@ public class RiskService {
     public static final int HOLD_AT = 75;
 
     private final TransactionRepository transactionRepository;
+    private final ScamReportRepository scamReportRepository;
     private final Clock clock;
 
-    public RiskService(TransactionRepository transactionRepository, Clock clock) {
+    public RiskService(TransactionRepository transactionRepository, ScamReportRepository scamReportRepository,
+                       Clock clock) {
         this.transactionRepository = transactionRepository;
+        this.scamReportRepository = scamReportRepository;
         this.clock = clock;
     }
 
@@ -104,6 +109,15 @@ public class RiskService {
             } else if (age.toDays() < 14) {
                 reasons.add(new RiskReason("YOUNG_RECEIVER", "This account is less than two weeks old.", 10));
             }
+        }
+
+        // Reports from other users are the strongest signal there is.
+        if (scamReportRepository.countAgainstReceiver(receiver.getId(), ScamReportStatus.UPHELD) > 0) {
+            reasons.add(new RiskReason("REPORTED_SCAM",
+                    "Other people have reported this account for taking their money in a scam.", 45));
+        } else if (scamReportRepository.countAgainstReceiver(receiver.getId(), ScamReportStatus.OPEN) > 0) {
+            reasons.add(new RiskReason("REPORT_PENDING",
+                    "Someone has reported this account and it is being reviewed.", 25));
         }
 
         LocalDateTime dayAgo = now.minusHours(24);

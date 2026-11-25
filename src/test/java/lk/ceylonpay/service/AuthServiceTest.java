@@ -42,6 +42,9 @@ class AuthServiceTest {
     @Mock
     private WalletRepository walletRepository;
 
+    @Mock
+    private RefreshTokenService refreshTokenService;
+
     @InjectMocks
     private AuthService authService;
 

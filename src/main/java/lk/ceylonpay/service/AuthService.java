@@ -23,13 +23,15 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final WalletRepository walletRepository;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
-                        WalletRepository walletRepository) {
+                        WalletRepository walletRepository, RefreshTokenService refreshTokenService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.walletRepository = walletRepository;
+        this.refreshTokenService = refreshTokenService;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -56,7 +58,8 @@ public class AuthService {
 
         String token = jwtUtil.generateToken(saved.getId(), saved.getRole());
 
-        return new AuthResponse(token, saved.getId(), saved.getName(), saved.getRole());
+        return new AuthResponse(token, saved.getId(), saved.getName(), saved.getRole(),
+                refreshTokenService.startSession(saved.getId()));
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -77,7 +80,23 @@ public class AuthService {
         }
 
         String token = jwtUtil.generateToken(user.getId(), user.getRole());
-        return new AuthResponse(token, user.getId(), user.getName(), user.getRole());
+        return new AuthResponse(token, user.getId(), user.getName(), user.getRole(),
+                refreshTokenService.startSession(user.getId()));
+    }
+
+    /** Swaps a valid refresh token for a fresh access token and the next refresh token. */
+    public AuthResponse refresh(String refreshToken) {
+        RefreshTokenService.Rotation rotation = refreshTokenService.rotate(refreshToken);
+        // Re-read the user so a changed role (or a removed account) takes effect at the next refresh.
+        User user = userRepository.findById(rotation.userId())
+                .filter(u -> "USER".equals(u.getRole()) || "ADMIN".equals(u.getRole()))
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid refresh token"));
+        return new AuthResponse(jwtUtil.generateToken(user.getId(), user.getRole()), user.getId(), user.getName(),
+                user.getRole(), rotation.newRefreshToken());
+    }
+
+    public void logout(String refreshToken) {
+        refreshTokenService.revokeSession(refreshToken);
     }
 
 }

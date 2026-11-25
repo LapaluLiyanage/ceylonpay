@@ -333,14 +333,23 @@ export default function Transfer() {
                   </ul>
                   {draft.risk.outcome === 'WARN' && (
                     <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, fontWeight: 600 }}>
-                      <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
+                      <input
+                        type="checkbox"
+                        checked={ack}
+                        onChange={(e) => {
+                          setAck(e.target.checked);
+                          // Ticking "send anyway" asks for the code right away (a no-op when codes are off).
+                          if (e.target.checked && !otpSent) sendCode();
+                        }}
+                      />
                       {t('understand')}
                     </label>
                   )}
                   {draft.risk.outcome === 'WARN' && ack && (
                     <div style={{ marginTop: 12 }}>
                       {!otpSent ? (
-                        <button
+                        // Only shown if asking for the code failed, so it can be tried again.
+                        otpErr && <button
                           type="button"
                           onClick={sendCode}
                           style={{ padding: '9px 14px', borderRadius: 10, background: '#14170f', color: '#f3f4ef', fontSize: 13, fontWeight: 700 }}
@@ -383,7 +392,7 @@ export default function Transfer() {
                 <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: '#6b530c' }}>
                   {draft.risk?.outcome === 'HOLD'
                     ? 'Check the name above is the person you mean to pay.'
-                    : "Once sent, this transfer can't be reversed. Check the name above is the person you mean to pay."}
+                    : "Check the name above is the person you mean to pay. If it turns out to be a scam, report it from Activity straight away; money can only be recovered while it is still in their wallet."}
                 </p>
               </div>
 

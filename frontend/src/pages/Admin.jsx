@@ -5,43 +5,66 @@ import { ApiError } from '../api/client';
 import { formatMoney } from '../utils/money';
 import { toDisplayPhone, normalizeStoredPhone } from '../utils/phone';
 import { timestampLabel } from '../components/Activity';
+import { Banner, Heading, C, display, mono } from '../components/ui';
+import { useMedia, DESKTOP_QUERY } from '../components/useMedia';
 
-const card = { padding: 24, borderRadius: 22, background: '#141614', border: '1px solid rgba(255,255,255,.07)' };
-const item = { padding: 16, borderRadius: 14, background: '#0f110f', border: '1px solid rgba(255,255,255,.07)' };
-const small = { fontSize: 13, color: 'rgba(242,244,239,.55)', lineHeight: 1.6 };
+function who(name, phone) {
+  return `${name} · ${toDisplayPhone(normalizeStoredPhone(phone))}`;
+}
 
-function ActionButton({ children, onClick, disabled, tone }) {
+function SectionTitle({ title, count, sub }) {
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <b style={{ fontSize: 16 }}>{title}</b>
+        <span style={{ height: 24, minWidth: 24, padding: '0 8px', borderRadius: 999, background: C.grad, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.25)', color: '#fff', fontSize: 12, display: 'grid', placeItems: 'center' }}>{count}</span>
+      </div>
+      <span style={{ fontSize: 13, color: C.muted, lineHeight: 1.45 }}>{sub}</span>
+    </>
+  );
+}
+
+function Empty({ children }) {
+  return <div style={{ background: C.surface, borderRadius: 18, padding: 16, fontSize: 13.5, color: C.muted }}>{children}</div>;
+}
+
+function Item({ children }) {
+  return <div style={{ background: C.surface, borderRadius: 22, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>{children}</div>;
+}
+
+function Amount({ children }) {
+  return <span style={{ ...display, fontSize: 20, fontWeight: 500 }}>{children}</span>;
+}
+
+function Go({ children, onClick, disabled, danger }) {
   return (
     <button
+      className="cp-grad"
       onClick={onClick}
       disabled={disabled}
-      style={{
-        padding: '9px 14px',
-        borderRadius: 10,
-        fontSize: 13,
-        fontWeight: 700,
-        background: tone === 'primary' ? '#c9f24d' : 'transparent',
-        color: tone === 'primary' ? '#131707' : 'rgba(242,244,239,.75)',
-        border: tone === 'primary' ? 0 : '1px solid rgba(255,255,255,.14)',
-        opacity: disabled ? 0.5 : 1,
-      }}
+      style={{ flex: 1, height: 44, border: 0, borderRadius: 999, background: danger ? C.accent : C.grad, boxShadow: danger ? 'none' : 'inset 0 1px 0 rgba(255,255,255,.25)', color: '#fff', fontSize: 13.5, fontWeight: 600, opacity: disabled ? 0.5 : 1 }}
     >
       {children}
     </button>
   );
 }
 
-function who(name, phone) {
-  return `${name} · ${toDisplayPhone(normalizeStoredPhone(phone))}`;
+function Ghost({ children, onClick, disabled }) {
+  return (
+    <button className="cp-outline" onClick={onClick} disabled={disabled} style={{ flex: 1, height: 44, borderRadius: 999, border: `1.5px solid ${C.outline}`, fontSize: 13.5, opacity: disabled ? 0.5 : 1 }}>
+      {children}
+    </button>
+  );
 }
 
 export default function Admin() {
+  const desktop = useMedia(DESKTOP_QUERY);
   const [reviews, setReviews] = useState([]);
   const [reports, setReports] = useState([]);
   const [mules, setMules] = useState([]);
   const [state, setState] = useState('loading');
   const [busyId, setBusyId] = useState(null);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState({ text: '', tone: 'ok' });
 
   const load = useCallback(async () => {
     try {
@@ -62,12 +85,12 @@ export default function Admin() {
 
   async function act(id, fn, done) {
     setBusyId(id);
-    setMessage('');
+    setMessage({ text: '', tone: 'ok' });
     try {
       await fn();
-      setMessage(done);
+      setMessage({ text: done, tone: 'ok' });
     } catch (err) {
-      setMessage(err instanceof ApiError ? err.message : "Couldn't complete that. Try again.");
+      setMessage({ text: err instanceof ApiError ? err.message : "Couldn't complete that. Try again.", tone: 'error' });
     } finally {
       setBusyId(null);
       load();
@@ -76,140 +99,111 @@ export default function Admin() {
 
   return (
     <AppShell>
-      <main style={{ marginTop: 20, display: 'grid', gap: 16, animation: 'cp-rise .35s ease both' }}>
-        {state === 'forbidden' && (
-          <section style={card}>
-            <p style={{ margin: 0, fontSize: 14 }}>This page is for CeylonPay reviewers only.</p>
-          </section>
-        )}
-        {state === 'error' && (
-          <section style={card}>
-            <p style={{ margin: 0, fontSize: 14, color: '#ff9b85' }}>Couldn&apos;t load the review queues. Refresh to try again.</p>
-          </section>
-        )}
+      <div style={{ display: 'grid', gridTemplateColumns: desktop ? 'repeat(3, minmax(0,1fr))' : 'minmax(0,1fr)', gap: desktop ? 20 : 14, alignItems: 'start', paddingTop: 6 }}>
+        <Heading style={{ gridColumn: '1 / -1' }}>Review</Heading>
+
+        {state === 'forbidden' && <Banner tone="info" style={{ gridColumn: '1 / -1' }}>This page is for CeylonPay reviewers only.</Banner>}
+        {state === 'error' && <Banner style={{ gridColumn: '1 / -1' }}>Couldn&apos;t load the review queues. Refresh to try again.</Banner>}
+        {message.text && <Banner tone={message.tone} style={{ gridColumn: '1 / -1' }}>{message.text}</Banner>}
 
         {state === 'ready' && (
           <>
-            {message && (
-              <p role="status" style={{ margin: 0, fontSize: 13, color: 'rgba(242,244,239,.7)' }}>
-                {message}
-              </p>
-            )}
-
-            <section style={card}>
-              <h2 style={{ margin: '0 0 4px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 21, fontWeight: 500 }}>
-                Held transfers ({reviews.length})
-              </h2>
-              <p style={{ ...small, margin: '0 0 16px' }}>Stopped by the scam check. No money has moved yet.</p>
-              {reviews.length === 0 && <p style={small}>Nothing waiting.</p>}
-              <div style={{ display: 'grid', gap: 10 }}>
-                {reviews.map((r) => (
-                  <div key={r.id} style={item}>
-                    <p style={{ margin: '0 0 4px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 18, fontWeight: 600 }}>
-                      {formatMoney(r.amount)}
-                    </p>
-                    <p style={small}>
-                      {who(r.senderName, r.senderPhone)} → {who(r.receiverName, r.receiverPhone)}
-                      <br />
-                      {timestampLabel(r.createdAt)} · {r.detail}
-                    </p>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                      <ActionButton
-                        tone="primary"
-                        disabled={busyId === r.id}
-                        onClick={() => act(r.id, () => approveReview(r.id), 'Transfer released.')}
-                      >
-                        Approve
-                      </ActionButton>
-                      <ActionButton disabled={busyId === r.id} onClick={() => act(r.id, () => rejectReview(r.id), 'Transfer rejected.')}>
-                        Reject
-                      </ActionButton>
-                    </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <SectionTitle title="Held transfers" count={reviews.length} sub="Stopped by the scam check. No money has moved yet." />
+              {reviews.length === 0 && <Empty>Nothing waiting.</Empty>}
+              {reviews.map((r) => (
+                <Item key={r.id}>
+                  <Amount>{formatMoney(r.amount)}</Amount>
+                  <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+                    {who(r.senderName, r.senderPhone)} → <b>{who(r.receiverName, r.receiverPhone)}</b>
+                    <br />
+                    <span style={{ color: C.muted }}>Held {timestampLabel(r.createdAt)}</span>
                   </div>
-                ))}
-              </div>
-            </section>
-
-            <section style={card}>
-              <h2 style={{ margin: '0 0 4px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 21, fontWeight: 500 }}>
-                Scam reports ({reports.length})
-              </h2>
-              <p style={{ ...small, margin: '0 0 16px' }}>
-                The reported account&apos;s outgoing money is on hold. Upholding pulls back what they still have.
-              </p>
-              {reports.length === 0 && <p style={small}>Nothing waiting.</p>}
-              <div style={{ display: 'grid', gap: 10 }}>
-                {reports.map((r) => (
-                  <div key={r.id} style={item}>
-                    <p style={{ margin: '0 0 4px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 18, fontWeight: 600 }}>
-                      {formatMoney(r.amount)}
-                    </p>
-                    <p style={small}>
-                      Reported by {who(r.senderName, r.senderPhone)}
-                      <br />
-                      Receiver {who(r.receiverName, r.receiverPhone)} · holds {formatMoney(r.receiverBalance)} now
-                      <br />
-                      {timestampLabel(r.createdAt)}
-                      {r.note ? ` · “${r.note}”` : ''}
-                    </p>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                      <ActionButton
-                        tone="primary"
-                        disabled={busyId === r.id}
-                        onClick={() => act(r.id, () => resolveReport(r.id, 'UPHOLD'), 'Report upheld. Money recovered where possible.')}
-                      >
-                        Uphold &amp; recover
-                      </ActionButton>
-                      <ActionButton
-                        disabled={busyId === r.id}
-                        onClick={() => act(r.id, () => resolveReport(r.id, 'DISMISS'), 'Report dismissed. Hold lifted.')}
-                      >
-                        Dismiss
-                      </ActionButton>
-                    </div>
+                  {r.detail && <div style={{ fontSize: 12.5, lineHeight: 1.45, color: C.soft }}>{r.detail}</div>}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Go disabled={busyId === r.id} onClick={() => act(r.id, () => approveReview(r.id), 'Transfer released.')}>Approve</Go>
+                    <Ghost disabled={busyId === r.id} onClick={() => act(r.id, () => rejectReview(r.id), 'Transfer rejected.')}>Reject</Ghost>
                   </div>
-                ))}
-              </div>
-            </section>
+                </Item>
+              ))}
+            </div>
 
-            <section style={card}>
-              <h2 style={{ margin: '0 0 4px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 21, fontWeight: 500 }}>
-                Suspected mule accounts ({mules.length})
-              </h2>
-              <p style={{ ...small, margin: '0 0 16px' }}>
-                Received from 3 or more people in the last 24 hours, and also pass money on, are new, or have been reported.
-                Holding an account stops it sending money; it can still receive.
-              </p>
-              {mules.length === 0 && <p style={small}>Nobody looks suspicious right now.</p>}
-              <div style={{ display: 'grid', gap: 10 }}>
-                {mules.map((m) => (
-                  <div key={m.userId} style={item}>
-                    <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600 }}>{who(m.name, m.phone)}</p>
-                    <p style={small}>
-                      {m.senders} senders · received {formatMoney(m.received)} · sent on {formatMoney(m.sentOn)}
-                      {m.accountAgeDays >= 0 ? ` · account ${m.accountAgeDays} days old` : ''}
-                      <br />
-                      {m.flags.join(' · ')}
-                      {m.onHold ? ' · ON HOLD' : ''}
-                    </p>
-                    <div style={{ marginTop: 12 }}>
-                      {m.onHold ? (
-                        <ActionButton disabled={busyId === m.userId} onClick={() => act(m.userId, () => releaseAccount(m.userId), 'Hold lifted.')}>
-                          Release hold
-                        </ActionButton>
-                      ) : (
-                        <ActionButton tone="primary" disabled={busyId === m.userId} onClick={() => act(m.userId, () => holdAccount(m.userId), 'Account put on hold.')}>
-                          Hold account
-                        </ActionButton>
-                      )}
-                    </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <SectionTitle title="Scam reports" count={reports.length} sub="The reported account's outgoing money is on hold. Upholding pulls back what they still have." />
+              {reports.length === 0 && <Empty>Nothing waiting.</Empty>}
+              {reports.map((r) => (
+                <Item key={r.id}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Amount>{formatMoney(r.amount)}</Amount>
+                    <span style={{ fontSize: 12, color: C.muted }}>{timestampLabel(r.createdAt)}</span>
                   </div>
-                ))}
-              </div>
-            </section>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 13 }}>
+                    <span style={{ color: C.muted }}>Reported by</span>
+                    <span>{who(r.senderName, r.senderPhone)}</span>
+                    <span style={{ color: C.muted }}>Receiver</span>
+                    <span>
+                      <b>{who(r.receiverName, r.receiverPhone)}</b> · still holds {formatMoney(r.receiverBalance)}
+                    </span>
+                  </div>
+                  {r.note && <div style={{ background: C.surface2, borderRadius: 12, padding: '10px 12px', fontSize: 13, lineHeight: 1.45, fontStyle: 'italic' }}>“{r.note}”</div>}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Go danger disabled={busyId === r.id} onClick={() => act(r.id, () => resolveReport(r.id, 'UPHOLD'), 'Report upheld. Money recovered where possible.')}>
+                      Uphold &amp; recover
+                    </Go>
+                    <Ghost disabled={busyId === r.id} onClick={() => act(r.id, () => resolveReport(r.id, 'DISMISS'), 'Report dismissed. Hold lifted.')}>Dismiss</Ghost>
+                  </div>
+                </Item>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <SectionTitle
+                title="Suspected mule accounts"
+                count={mules.length}
+                sub="Received from 3 or more people in the last 24 hours, and also pass money on, are new, or have been reported. Holding an account stops it sending money; it can still receive."
+              />
+              {mules.length === 0 && <Empty>Nobody looks suspicious right now.</Empty>}
+              {mules.map((m) => (
+                <Item key={m.userId}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                    <div>
+                      <b style={{ fontSize: 15 }}>{m.name}</b>
+                      <div style={{ ...mono, fontSize: 12, color: C.muted }}>{toDisplayPhone(normalizeStoredPhone(m.phone))}</div>
+                    </div>
+                    <span style={{ height: 28, padding: '0 10px', borderRadius: 999, background: m.onHold ? C.errorBg : 'rgba(255,255,255,.08)', color: m.onHold ? C.errorSoft : C.soft, fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center' }}>
+                      {m.onHold ? 'On hold' : 'Not held'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 6, fontSize: 11.5, color: C.muted }}>
+                    {[
+                      ['Senders', m.senders],
+                      ['In', formatMoney(m.received)],
+                      ['Out', formatMoney(m.sentOn)],
+                      ['Age', m.accountAgeDays >= 0 ? `${m.accountAgeDays} days` : '—'],
+                    ].map(([label, value]) => (
+                      <div key={label} style={{ background: C.surface2, borderRadius: 12, padding: 8 }}>
+                        {label}
+                        <br />
+                        <b style={{ color: C.text, fontSize: 13 }}>{value}</b>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {m.flags.map((f) => (
+                      <span key={f} style={{ fontSize: 11.5, padding: '4px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,.16)' }}>{f}</span>
+                    ))}
+                  </div>
+                  {m.onHold ? (
+                    <Ghost disabled={busyId === m.userId} onClick={() => act(m.userId, () => releaseAccount(m.userId), 'Hold lifted.')}>Release hold</Ghost>
+                  ) : (
+                    <Go disabled={busyId === m.userId} onClick={() => act(m.userId, () => holdAccount(m.userId), 'Account put on hold.')}>Hold account</Go>
+                  )}
+                </Item>
+              ))}
+            </div>
           </>
         )}
-      </main>
+      </div>
     </AppShell>
   );
 }

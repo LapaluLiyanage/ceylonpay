@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../api/client';
 import { digitsOnly, groupPhone, phoneError } from '../utils/phone';
-import { FieldLabel, TextField, FieldError, PhoneField } from '../components/FormFields';
-import { AuthErrorBanner } from '../components/AuthErrorBanner';
-import { Button } from '../components/Button';
-import { AuthSplitLayout } from '../components/AuthSplitLayout';
+import { AuthSplitLayout, AuthSwitch } from '../components/AuthSplitLayout';
+import { Banner, ErrorText, Heading, Label, Pill, PhoneBox, PrimaryButton, TextInput } from '../components/ui';
 
 export default function Login() {
   const { login } = useAuth();
@@ -52,32 +50,47 @@ export default function Login() {
   }
 
   return (
-    <AuthSplitLayout>
-      <h2 style={{ margin: '0 0 6px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 26, fontWeight: 500, letterSpacing: '-.02em' }}>
-        Log in
-      </h2>
-      <p style={{ margin: '0 0 28px', fontSize: 14, color: 'rgba(242,244,239,.5)' }}>Use the phone number on your wallet.</p>
-
-      <AuthErrorBanner message={authError} />
-
-      <form onSubmit={handleSubmit}>
-        <FieldLabel>Phone number</FieldLabel>
-        <PhoneField value={groupPhone(phone)} onChange={(e) => setPhone(digitsOnly(e.target.value))} />
-        <FieldError>{fieldErrors.phone}</FieldError>
-
-        <div style={{ marginTop: 18 }}>
-          <FieldLabel>Password</FieldLabel>
-          <TextField type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-          <FieldError>{fieldErrors.password}</FieldError>
+    <AuthSplitLayout
+      action={<AuthSwitch onClick={() => navigate('/register')}>Create an account</AuthSwitch>}
+      heroLabel="Welcome back"
+      heroHeight={250}
+    >
+      <Heading size={28} style={{ margin: '4px 0 0' }}>
+        Log in to <Pill>CeylonPay</Pill>
+      </Heading>
+      {authError && <Banner>{authError}</Banner>}
+      <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <Label>Phone number</Label>
+          <PhoneBox
+            value={groupPhone(phone)}
+            onChange={(e) => {
+              setPhone(digitsOnly(e.target.value));
+              setFieldErrors((f) => ({ ...f, phone: '' }));
+            }}
+            autoComplete="tel-national"
+          />
+          <ErrorText>{fieldErrors.phone}</ErrorText>
         </div>
-
-        <Button type="submit" variant="primary" style={{ width: '100%', marginTop: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <Label>Password</Label>
+          <TextInput
+            type="password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setFieldErrors((f) => ({ ...f, password: '' }));
+            }}
+            autoComplete="current-password"
+          />
+          <ErrorText>{fieldErrors.password}</ErrorText>
+        </div>
+        <PrimaryButton type="submit" disabled={busy}>
           {busy ? 'Logging in…' : 'Log in'}
-        </Button>
+        </PrimaryButton>
       </form>
-
-      <p style={{ margin: '20px 0 0', fontSize: 14, color: 'rgba(242,244,239,.5)', textAlign: 'center' }}>
-        New to CeylonPay? <Link to="/register">Create an account</Link>
+      <p style={{ margin: 0, textAlign: 'center', fontSize: 13.5, color: '#C9BCB0' }}>
+        New here? <Link to="/register">Create a wallet</Link>
       </p>
     </AuthSplitLayout>
   );

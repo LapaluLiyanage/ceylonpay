@@ -10,10 +10,9 @@ import { reasonText } from '../i18n/strings';
 import { ApiError } from '../api/client';
 import { formatMoney, parseAmountInput } from '../utils/money';
 import { digitsOnly, groupPhone, phoneError, toApiPhone, toDisplayPhone } from '../utils/phone';
-import { Button } from '../components/Button';
-import { FieldLabel, FieldError, PhoneField } from '../components/FormFields';
 import { QrScanner, canScanQr } from '../components/QrScanner';
 import { parsePayLink } from '../utils/payLink';
+import { AmountBox, Banner, Card, ErrorText, Label, OutlineButton, PageTitle, PhoneBox, PrimaryButton, C, display, mono } from '../components/ui';
 
 const FAIL_COPY = {
   network: { title: "Transfer didn't go through", label: 'Try again' },
@@ -21,6 +20,17 @@ const FAIL_COPY = {
   blocked: { title: 'Blocked by your safety settings', label: 'Open Safety' },
   balance: { title: 'Not enough balance', label: 'Deposit money' },
 };
+
+const CHECK_NAME = 'Check the name above is the person you mean to pay.';
+
+function SummaryRow({ label, children, strong }) {
+  return (
+    <>
+      <span style={{ color: '#CFCAC2' }}>{label}</span>
+      <span style={{ textAlign: 'right', fontWeight: strong ? 600 : 400 }}>{children}</span>
+    </>
+  );
+}
 
 export default function Transfer() {
   const navigate = useNavigate();
@@ -41,6 +51,7 @@ export default function Transfer() {
   const [result, setResult] = useState(null);
   const [blockedMessage, setBlockedMessage] = useState('');
   const [checking, setChecking] = useState(false);
+  const [changed, setChanged] = useState(false);
   const [ack, setAck] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpNeeded, setOtpNeeded] = useState(true);
@@ -104,6 +115,7 @@ export default function Transfer() {
       const owner = await lookupUser(toApiPhone(phone));
       const risk = await riskCheck(toApiPhone(phone), parsed.value);
       setAck(false);
+      setChanged(false);
       resetOtp();
       setDraft({ phoneDigits: phone, amountValue: parsed.value, recipientName: owner.name, risk });
       setStage('confirm');
@@ -138,6 +150,7 @@ export default function Transfer() {
           const risk = await riskCheck(toApiPhone(draft.phoneDigits), draft.amountValue);
           setDraft((d) => ({ ...d, risk }));
           setAck(false);
+          setChanged(true);
           resetOtp();
           return;
         } catch {
@@ -164,10 +177,10 @@ export default function Transfer() {
     failKind === 'blocked'
       ? blockedMessage
       : failKind === 'notfound'
-      ? `${toDisplayPhone(draft?.phoneDigits)} isn't registered with CeylonPay. Check the number, or ask them to sign up first.`
-      : failKind === 'balance'
-        ? `You need ${formatMoney((draft?.amountValue || 0) - balance)} more to send ${formatMoney(draft?.amountValue || 0)}. Deposit first, then send.`
-        : "We couldn't reach the server, so the transfer was never sent. Try again in a moment.";
+        ? `${toDisplayPhone(draft?.phoneDigits)} isn't registered with CeylonPay. Check the number, or ask them to sign up first.`
+        : failKind === 'balance'
+          ? `You need ${formatMoney((draft?.amountValue || 0) - balance)} more to send ${formatMoney(draft?.amountValue || 0)}. Deposit first, then send.`
+          : "We couldn't reach the server, so the transfer was never sent. Try again in a moment.";
 
   function failPrimaryAction() {
     if (failKind === 'balance') navigate('/deposit');
@@ -176,326 +189,241 @@ export default function Transfer() {
     else confirmTransfer();
   }
 
+  const outcome = draft?.risk?.outcome;
+  const sendDisabled = busy || (outcome === 'WARN' && (!ack || !otpSent || (otpNeeded && otpCode.length !== 6)));
+  const held = result?.status === 'PENDING_REVIEW';
+
   return (
     <AppShell>
-      <main style={{ marginTop: 20, display: 'flex', justifyContent: 'center', animation: 'cp-rise .35s ease both' }}>
-        <div style={{ width: '100%', maxWidth: 520 }}>
-          {stage === 'form' && (
-            <section style={{ padding: 28, borderRadius: 22, background: '#141614', border: '1px solid rgba(255,255,255,.07)' }}>
-              <h2 style={{ margin: '0 0 6px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 500, letterSpacing: '-.02em' }}>
-                Send money
-              </h2>
-              <p style={{ margin: '0 0 26px', fontSize: 14, color: 'rgba(242,244,239,.5)' }}>
-                You&apos;ll review everything before it leaves your wallet.
-              </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6 }}>
+        {stage === 'form' && (
+          <form onSubmit={reviewTransfer} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <PageTitle sub="You'll review everything before it leaves your wallet.">Send money</PageTitle>
+            <Card style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <Label>Send to</Label>
+              <PhoneBox
+                height={56}
+                fontSize={17}
+                bordered={false}
+                tone={C.surface2}
+                value={groupPhone(phone)}
+                onChange={(e) => {
+                  setPhone(digitsOnly(e.target.value));
+                  setPhoneErr('');
+                }}
+                aria-label="Recipient phone number"
+              />
+              <ErrorText>{phoneErr}</ErrorText>
+              {canScanQr() && !scanning && (
+                <OutlineButton type="button" onClick={() => setScanning(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                  <span aria-hidden="true" style={{ width: 16, height: 16, border: '2px solid #F4EEE8', borderRadius: 4 }} />
+                  Scan a QR code
+                </OutlineButton>
+              )}
+              {scanning && <QrScanner onResult={handleScan} onClose={() => setScanning(false)} />}
+              <Label style={{ marginTop: 4 }}>Amount</Label>
+              <AmountBox
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setAmountErr('');
+                }}
+                aria-label="Amount in rupees"
+              />
+              <ErrorText>{amountErr}</ErrorText>
+              {balanceError ? (
+                <ErrorText>Couldn&apos;t load your balance — refresh the page to try again.</ErrorText>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: C.muted }}>Available</span>
+                  <b>{formatMoney(balance)}</b>
+                </div>
+              )}
+            </Card>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <PrimaryButton type="submit" disabled={balanceError || checking} style={{ flex: 1 }}>
+                {checking ? 'Checking number…' : 'Review transfer'}
+              </PrimaryButton>
+              <OutlineButton type="button" height={56} onClick={() => navigate('/dashboard')} style={{ fontSize: 15, padding: '0 20px' }}>
+                Cancel
+              </OutlineButton>
+            </div>
+          </form>
+        )}
 
-              <form onSubmit={reviewTransfer}>
-                <FieldLabel>Send to</FieldLabel>
-                <PhoneField
-                  value={groupPhone(phone)}
-                  onChange={(e) => {
-                    setPhone(digitsOnly(e.target.value));
-                    setPhoneErr('');
-                  }}
-                  height={56}
-                />
-                <FieldError>{phoneErr}</FieldError>
-                {canScanQr() && !scanning && (
-                  <button
-                    type="button"
-                    onClick={() => setScanning(true)}
-                    style={{ marginTop: 10, padding: '8px 12px', borderRadius: 10, background: 'rgba(255,255,255,.08)', color: '#f2f4ef', fontSize: 13 }}
-                  >
-                    Scan a QR code
-                  </button>
-                )}
-                {scanning && <QrScanner onResult={handleScan} onClose={() => setScanning(false)} />}
+        {stage === 'confirm' && draft && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ ...mono, fontSize: 12, color: C.muted }}>STEP 2 OF 2 · CONFIRM</span>
+              <OutlineButton height={36} onClick={() => setStage('form')} style={{ fontSize: 13, padding: '0 14px' }}>
+                Edit
+              </OutlineButton>
+            </div>
+            <Card tone="dark" style={{ borderRadius: 28, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <span style={{ fontSize: 13, color: '#CFCAC2' }}>You&apos;re sending</span>
+              <span style={{ ...display, fontSize: 32, fontWeight: 500, lineHeight: 1 }}>{formatMoney(draft.amountValue)}</span>
+              <div style={{ background: C.surface, color: C.text, borderRadius: 20, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ width: 44, height: 44, borderRadius: '50%', background: C.accent, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 700 }}>
+                  {(draft.recipientName || '?')[0]}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: C.muted }}>Paying</div>
+                  <div style={{ fontSize: 19, fontWeight: 700 }}>{draft.recipientName}</div>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 14px', fontSize: 13.5 }}>
+                <SummaryRow label="Phone"><span style={{ ...mono, fontSize: 13 }}>{toDisplayPhone(draft.phoneDigits)}</span></SummaryRow>
+                <SummaryRow label="Fee">Rs. 0.00</SummaryRow>
+                <SummaryRow label="Balance after" strong>{formatMoney(balanceAfter)}</SummaryRow>
+              </div>
+            </Card>
 
-                <div style={{ marginTop: 20 }}>
-                  <FieldLabel>Amount</FieldLabel>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '0 16px',
-                      height: 72,
-                      borderRadius: 16,
-                      background: '#0f110f',
-                      border: '1px solid rgba(255,255,255,.1)',
+            {changed && (
+              <Banner tone="warn">Something changed since you reviewed this transfer. Check the updated reasons below and confirm again.</Banner>
+            )}
+
+            {outcome === 'ALLOW' && (
+              <Card style={{ borderRadius: 20, padding: '14px 16px', fontSize: 13.5, lineHeight: 1.5, color: C.soft, display: 'flex', gap: 12 }}>
+                <span aria-hidden="true" style={{ flex: 'none', width: 10, height: 10, borderRadius: '50%', background: '#2F7A4E', marginTop: 5 }} />
+                <span>{CHECK_NAME} If it turns out to be a scam, report it from Activity straight away — money can only be recovered while it&apos;s still in the recipient&apos;s wallet.</span>
+              </Card>
+            )}
+
+            {outcome === 'WARN' && (
+              <Card tone="warn" role="alert" style={{ borderRadius: 22, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ width: 32, height: 32, borderRadius: '50%', background: '#D9822B', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 700 }}>!</span>
+                  <b style={{ fontSize: 15.5 }}>{t('warnTitle')}</b>
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13.5, lineHeight: 1.45 }}>
+                  {draft.risk.reasons.map((r) => (
+                    <li key={r.code}>{reasonText(r, lang)}</li>
+                  ))}
+                </ul>
+                <span style={{ fontSize: 12.5, lineHeight: 1.45 }}>
+                  {CHECK_NAME} If it is a scam, report it from Activity straight away — money can only be recovered while it&apos;s still in their wallet.
+                </span>
+                <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start', background: C.surface, color: C.text, borderRadius: 14, padding: 12, cursor: 'pointer', fontSize: 13.5, lineHeight: 1.4, fontWeight: 500 }}>
+                  <input
+                    type="checkbox"
+                    checked={ack}
+                    onChange={(e) => {
+                      setAck(e.target.checked);
+                      // Ticking "send anyway" asks for the code right away (a no-op when codes are off).
+                      if (e.target.checked && !otpSent) sendCode();
                     }}
-                  >
-                    <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, color: 'rgba(242,244,239,.45)' }}>Rs.</span>
-                    <input
-                      value={amount}
-                      onChange={(e) => {
-                        setAmount(e.target.value);
-                        setAmountErr('');
-                      }}
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        height: '100%',
-                        background: 'transparent',
-                        border: 0,
-                        color: '#f2f4ef',
-                        fontFamily: "'Space Grotesk',sans-serif",
-                        fontSize: 34,
-                        fontWeight: 500,
-                        letterSpacing: '-.02em',
-                      }}
-                    />
-                  </div>
-                  <FieldError>{amountErr}</FieldError>
-                </div>
-
-                {balanceError ? (
-                  <p style={{ margin: '16px 0 0', fontFamily: "'Space Grotesk',sans-serif", fontSize: 13, color: '#ff7a5c' }}>
-                    Couldn&apos;t load your balance — refresh the page to try again.
-                  </p>
-                ) : (
-                  <p style={{ margin: '16px 0 0', fontFamily: "'Space Grotesk',sans-serif", fontSize: 13, color: 'rgba(242,244,239,.4)' }}>
-                    Available {formatMoney(balance)}
-                  </p>
+                    style={{ width: 22, height: 22, accentColor: C.accent, margin: 0, flex: 'none' }}
+                  />
+                  <span>{t('understand')}</span>
+                </label>
+                {ack && !otpSent && otpErr && (
+                  <OutlineButton type="button" height={40} onClick={sendCode} style={{ alignSelf: 'flex-start', fontSize: 13 }}>
+                    {t('otpSend')}
+                  </OutlineButton>
                 )}
+                {ack && otpSent && otpNeeded && (
+                  <div style={{ background: C.surface, color: C.text, borderRadius: 14, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <Label htmlFor="transfer-otp">{t('otpEnter')}</Label>
+                    <input
+                      id="transfer-otp"
+                      className="cp-field"
+                      value={otpCode}
+                      onChange={(e) => {
+                        setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                        setOtpErr('');
+                      }}
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      placeholder="••••••"
+                      style={{ height: 54, borderRadius: 14, background: C.surface2, padding: '0 16px', ...mono, fontSize: 22, letterSpacing: '.5em' }}
+                    />
+                    {devCode && <span style={{ ...mono, fontSize: 12, color: C.muted }}>Dev code: {devCode}</span>}
+                    <button type="button" onClick={sendCode} style={{ alignSelf: 'flex-start', fontSize: 12.5, fontWeight: 600, textDecoration: 'underline', color: C.soft }}>
+                      {t('otpResend')}
+                    </button>
+                  </div>
+                )}
+                {otpErr && <ErrorText>{otpErr}</ErrorText>}
+              </Card>
+            )}
 
-                <div style={{ display: 'flex', gap: 12, marginTop: 26, flexWrap: 'wrap' }}>
-                  <Button type="button" variant="outlineLight" style={{ flex: '0 1 120px' }} onClick={() => navigate('/dashboard')}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" variant="primary" style={{ flex: '1 1 180px', minWidth: 0 }} disabled={balanceError || checking}>
-                    {checking ? 'Checking number…' : 'Review transfer'}
-                  </Button>
+            {outcome === 'HOLD' && (
+              <Card tone="error" role="alert" style={{ borderRadius: 22, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ width: 32, height: 32, borderRadius: '50%', background: '#B3261E', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 700 }}>‖</span>
+                  <b style={{ fontSize: 15.5 }}>{t('holdTitle')}</b>
                 </div>
-              </form>
-            </section>
-          )}
+                <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13.5, lineHeight: 1.45 }}>
+                  {draft.risk.reasons.map((r) => (
+                    <li key={r.code}>{reasonText(r, lang)}</li>
+                  ))}
+                </ul>
+                <span style={{ fontSize: 13.5, lineHeight: 1.45, fontWeight: 600 }}>{t('holdNote')}</span>
+                <span style={{ fontSize: 12.5 }}>{CHECK_NAME}</span>
+              </Card>
+            )}
 
-          {stage === 'confirm' && draft && (
-            <section style={{ padding: 28, borderRadius: 22, background: '#f3f4ef', color: '#14170f', animation: 'cp-rise .3s ease both' }}>
-              <p style={{ margin: '0 0 20px', fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(20,23,15,.5)' }}>
-                Step 2 of 2 · Confirm
-              </p>
-              <p style={{ margin: '0 0 4px', fontSize: 14, color: 'rgba(20,23,15,.6)' }}>You&apos;re sending</p>
-              <p
-                style={{
-                  margin: '0 0 24px',
-                  fontFamily: "'Space Grotesk',sans-serif",
-                  fontSize: 'clamp(34px,6vw,44px)',
-                  fontWeight: 600,
-                  letterSpacing: '-.03em',
-                  lineHeight: 1,
-                }}
-              >
-                {formatMoney(draft.amountValue)}
-              </p>
+            <PrimaryButton knob="↗" height={58} onClick={confirmTransfer} disabled={sendDisabled}>
+              {busy ? 'Sending…' : outcome === 'HOLD' ? 'Submit for review' : `Send ${formatMoney(draft.amountValue)}`}
+            </PrimaryButton>
+          </>
+        )}
 
-              <div style={{ borderRadius: 16, background: '#fff', overflow: 'hidden', marginBottom: 18 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: 16, borderBottom: '1px solid rgba(20,23,15,.08)' }}>
-                  <span style={{ fontSize: 13, color: 'rgba(20,23,15,.55)' }}>Paying</span>
-                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 600 }}>{draft.recipientName}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: 16, borderBottom: '1px solid rgba(20,23,15,.08)' }}>
-                  <span style={{ fontSize: 13, color: 'rgba(20,23,15,.55)' }}>Phone</span>
-                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 500 }}>{toDisplayPhone(draft.phoneDigits)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: 16, borderBottom: '1px solid rgba(20,23,15,.08)' }}>
-                  <span style={{ fontSize: 13, color: 'rgba(20,23,15,.55)' }}>Fee</span>
-                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 500 }}>Rs. 0.00</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: 16 }}>
-                  <span style={{ fontSize: 13, color: 'rgba(20,23,15,.55)' }}>Balance after</span>
-                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 600 }}>{formatMoney(balanceAfter)}</span>
-                </div>
-              </div>
-
-              {draft.risk && draft.risk.outcome !== 'ALLOW' && (
-                <div
-                  role="alert"
-                  style={{
-                    padding: 14,
-                    borderRadius: 12,
-                    marginBottom: 14,
-                    background: draft.risk.outcome === 'HOLD' ? '#fbe3dc' : '#f6edd3',
-                    border: `1px solid ${draft.risk.outcome === 'HOLD' ? 'rgba(200,70,40,.35)' : 'rgba(190,150,40,.3)'}`,
-                    color: draft.risk.outcome === 'HOLD' ? '#7a2a14' : '#6b530c',
-                  }}
-                >
-                  <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>
-                    {draft.risk.outcome === 'HOLD' ? t('holdTitle') : t('warnTitle')}
-                  </p>
-                  <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
-                    {draft.risk.reasons.map((r) => (
-                      <li key={r.code}>{reasonText(r, lang)}</li>
-                    ))}
-                  </ul>
-                  {draft.risk.outcome === 'WARN' && (
-                    <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, fontWeight: 600 }}>
-                      <input
-                        type="checkbox"
-                        checked={ack}
-                        onChange={(e) => {
-                          setAck(e.target.checked);
-                          // Ticking "send anyway" asks for the code right away (a no-op when codes are off).
-                          if (e.target.checked && !otpSent) sendCode();
-                        }}
-                      />
-                      {t('understand')}
-                    </label>
-                  )}
-                  {draft.risk.outcome === 'WARN' && ack && (
-                    <div style={{ marginTop: 12 }}>
-                      {!otpSent ? (
-                        // Only shown if asking for the code failed, so it can be tried again.
-                        otpErr && <button
-                          type="button"
-                          onClick={sendCode}
-                          style={{ padding: '9px 14px', borderRadius: 10, background: '#14170f', color: '#f3f4ef', fontSize: 13, fontWeight: 700 }}
-                        >
-                          {t('otpSend')}
-                        </button>
-                      ) : (
-                        otpNeeded && (
-                          <>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('otpEnter')}</label>
-                            <input
-                              value={otpCode}
-                              onChange={(e) => {
-                                setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6));
-                                setOtpErr('');
-                              }}
-                              inputMode="numeric"
-                              autoComplete="one-time-code"
-                              placeholder="000000"
-                              style={{ width: 160, height: 42, padding: '0 12px', borderRadius: 10, border: '1px solid rgba(20,23,15,.3)', fontSize: 20, letterSpacing: '.25em', marginRight: 8 }}
-                            />
-                            <button type="button" onClick={sendCode} style={{ fontSize: 12, fontWeight: 700, textDecoration: 'underline' }}>
-                              {t('otpResend')}
-                            </button>
-                            {devCode && <p style={{ margin: '6px 0 0', fontSize: 12 }}>Development code: {devCode}</p>}
-                          </>
-                        )
-                      )}
-                      {otpErr && <p style={{ margin: '8px 0 0', fontSize: 13, fontWeight: 600 }}>{otpErr}</p>}
-                    </div>
-                  )}
-                  {draft.risk.outcome === 'HOLD' && (
-                    <p style={{ margin: 0, fontSize: 13 }}>{t('holdNote')}</p>
-                  )}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: 10, padding: 14, borderRadius: 12, background: '#f6edd3', border: '1px solid rgba(190,150,40,.3)', marginBottom: 22 }}>
-                <span style={{ color: '#8a6a12', fontWeight: 700, lineHeight: 1.4 }}>!</span>
-                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: '#6b530c' }}>
-                  {draft.risk?.outcome === 'HOLD'
-                    ? 'Check the name above is the person you mean to pay.'
-                    : "Check the name above is the person you mean to pay. If it turns out to be a scam, report it from Activity straight away; money can only be recovered while it is still in their wallet."}
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <Button variant="outlineDark" style={{ flex: '0 1 130px' }} onClick={() => setStage('form')}>
-                  Edit
-                </Button>
-                <Button variant="dark" style={{ flex: '1 1 180px', minWidth: 0 }} onClick={confirmTransfer} disabled={busy || (draft.risk?.outcome === 'WARN' && (!ack || !otpSent || (otpNeeded && otpCode.length !== 6)))}>
-                  {busy ? 'Sending…' : draft.risk?.outcome === 'HOLD' ? 'Submit for review' : `Send ${formatMoney(draft.amountValue)}`}
-                </Button>
-              </div>
-            </section>
-          )}
-
-          {stage === 'sent' && result && draft && (
-            <section style={{ padding: '32px 28px', borderRadius: 22, background: '#f3f4ef', color: '#14170f', textAlign: 'center', animation: 'cp-rise .3s ease both' }}>
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  margin: '0 auto 20px',
-                  borderRadius: 16,
-                  background: result.status === 'PENDING_REVIEW' ? '#f6edd3' : '#c9f24d',
-                  color: '#131707',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 26,
-                }}
-              >
-                {result.status === 'PENDING_REVIEW' ? '…' : '✓'}
-              </div>
-              <h2 style={{ margin: '0 0 6px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: '-.02em' }}>
-                {result.status === 'PENDING_REVIEW' ? 'Held for review' : 'Sent'} {formatMoney(result.amount)}
-              </h2>
-              <p style={{ margin: '0 0 24px', fontSize: 14, color: 'rgba(20,23,15,.6)' }}>
-                to {draft.recipientName} · {toDisplayPhone(draft.phoneDigits)} ·{' '}
-                {timestampLabel(result.timestamp)}
-              </p>
-              {result.status === 'PENDING_REVIEW' && (
-                <p style={{ margin: '-8px 0 24px', fontSize: 13, lineHeight: 1.6, color: 'rgba(20,23,15,.65)' }}>
+        {stage === 'sent' && result && draft && (
+          <>
+            <Card tone="dark" style={{ borderRadius: 28, padding: 24, display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+              <span style={{ width: 54, height: 54, borderRadius: '50%', background: held ? '#D9822B' : '#2F7A4E', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 22, fontWeight: 700 }} aria-hidden="true">
+                {held ? '‖' : '✓'}
+              </span>
+              <span style={{ ...display, fontSize: 24, lineHeight: 1.2, textTransform: 'uppercase' }}>
+                {held ? 'Held for review' : 'Sent'} {formatMoney(result.amount)}
+              </span>
+              <span style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.9 }}>
+                to {draft.recipientName} · {toDisplayPhone(draft.phoneDigits)} · {timestampLabel(result.timestamp)}
+              </span>
+              {held && (
+                <span style={{ fontSize: 13.5, lineHeight: 1.55, color: '#DDD8D0' }}>
                   Nothing has left your wallet yet. We&apos;ll move the money once a reviewer approves it. You can cancel it from Activity.
-                </p>
+                </span>
               )}
-              <div style={{ borderRadius: 16, background: '#fff', overflow: 'hidden', textAlign: 'left', marginBottom: 24 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: 16, borderBottom: '1px solid rgba(20,23,15,.08)' }}>
-                  <span style={{ fontSize: 13, color: 'rgba(20,23,15,.55)' }}>Reference</span>
-                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 500 }}>{result.transactionId}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: 16 }}>
-                  <span style={{ fontSize: 13, color: 'rgba(20,23,15,.55)' }}>New balance</span>
-                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 600 }}>{formatMoney(result.newBalance)}</span>
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 14px', borderTop: '1px solid rgba(255,255,255,.18)', paddingTop: 14, fontSize: 13.5 }}>
+                <span style={{ opacity: 0.75 }}>Reference</span>
+                <span style={{ textAlign: 'right', ...mono, fontSize: 12.5, wordBreak: 'break-all' }}>{result.transactionId}</span>
+                <span style={{ opacity: 0.75 }}>New balance</span>
+                <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatMoney(result.newBalance)}</span>
               </div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <Button variant="dark" style={{ flex: '1 1 140px', minWidth: 0 }} onClick={() => navigate('/history')}>
-                  See activity
-                </Button>
-                <Button variant="outlineDark" style={{ flex: '1 1 140px', minWidth: 0 }} onClick={() => navigate('/dashboard')}>
-                  Back to wallet
-                </Button>
-              </div>
-            </section>
-          )}
+            </Card>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <PrimaryButton knob={null} onClick={() => navigate('/history')} style={{ flex: 1 }}>
+                See activity
+              </PrimaryButton>
+              <OutlineButton height={56} onClick={() => navigate('/dashboard')} style={{ flex: 1, fontSize: 15 }}>
+                Back to wallet
+              </OutlineButton>
+            </div>
+          </>
+        )}
 
-          {stage === 'failed' && fail && (
-            <section style={{ padding: '32px 28px', borderRadius: 22, background: '#141614', border: '1px solid rgba(255,122,92,.28)', animation: 'cp-rise .3s ease both' }}>
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  marginBottom: 20,
-                  borderRadius: 15,
-                  background: 'rgba(255,122,92,.14)',
-                  color: '#ff7a5c',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 24,
-                  fontWeight: 700,
-                }}
-              >
-                !
-              </div>
-              <h2 style={{ margin: '0 0 8px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 23, fontWeight: 500, letterSpacing: '-.02em' }}>
-                {fail.title}
-              </h2>
-              <p style={{ margin: '0 0 20px', fontSize: 14, lineHeight: 1.6, color: 'rgba(242,244,239,.6)' }}>{failBody}</p>
-              <p style={{ margin: '0 0 24px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 13, color: 'rgba(242,244,239,.4)' }}>
-                Nothing left your wallet. Balance {formatMoney(balance)}
-              </p>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <Button variant="primary" style={{ flex: '1 1 170px', minWidth: 0 }} onClick={failPrimaryAction} disabled={busy}>
-                  {fail.label}
-                </Button>
-                <Button variant="outlineLight" style={{ flex: '1 1 140px', minWidth: 0 }} onClick={() => navigate('/dashboard')}>
-                  Back to wallet
-                </Button>
-              </div>
-            </section>
-          )}
-        </div>
-      </main>
+        {stage === 'failed' && fail && (
+          <>
+            <Card tone="error" role="alert" style={{ borderRadius: 28, padding: 24, display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+              <span style={{ width: 54, height: 54, borderRadius: '50%', background: '#B3261E', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 22, fontWeight: 700 }} aria-hidden="true">!</span>
+              <span style={{ ...display, fontSize: 24, lineHeight: 1.2, textTransform: 'uppercase' }}>{fail.title}</span>
+              <span style={{ fontSize: 14, lineHeight: 1.5 }}>{failBody}</span>
+              <span style={{ ...mono, fontSize: 12.5, opacity: 0.8 }}>Nothing left your wallet. Balance {formatMoney(balance)}</span>
+            </Card>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <PrimaryButton knob={null} onClick={failPrimaryAction} disabled={busy} style={{ flex: 1 }}>
+                {fail.label}
+              </PrimaryButton>
+              <OutlineButton height={56} onClick={() => navigate('/dashboard')} style={{ flex: 1, fontSize: 15 }}>
+                Back to wallet
+              </OutlineButton>
+            </div>
+          </>
+        )}
+      </div>
     </AppShell>
   );
 }

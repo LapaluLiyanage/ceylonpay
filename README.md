@@ -72,7 +72,7 @@ Create a local `ceylonpay` PostgreSQL database, then:
 mvn spring-boot:run
 ```
 
-Defaults to `localhost:5432`, database `ceylonpay`, user/password `postgres` — see `src/main/resources/application.properties`. The API starts on port `8080`.
+The schema is managed by Flyway (`src/main/resources/db/migration`) and applied automatically at startup; Hibernate only validates it. Defaults to `localhost:5432`, database `ceylonpay`, user/password `postgres` — see `src/main/resources/application.properties`. The API starts on port `8080`.
 
 ### Frontend
 
@@ -106,8 +106,12 @@ cd frontend && npm test   # frontend — Vitest
 - **Access control is resource-scoped** — a user's JWT identifies them; every wallet/transaction lookup is implicitly scoped to that identity rather than gated by a separate permission check.
 - **Configuration is environment-driven** — the same jar runs locally, in Docker, and on Render, with only environment variables changing between them (database connection, JWT secret, allowed CORS origins).
 
+## Admin access
+
+`/api/admin/**` requires the `ADMIN` role (carried as a claim in the JWT). Nobody can become an admin through the API. Register the account first, then set `CEYLONPAY_ADMIN_PHONE` to its phone number and restart; the account is promoted at startup.
+
+Phone numbers are stored in one canonical form (`+947XXXXXXXX`); `0771234567` and `+94771234567` are the same account.
+
 ## Known limitations
 
-- Phone numbers accept either a `0` or `+94` prefix but aren't normalized at the database level, so the same real number entered both ways would register as two accounts.
-- No rate limiting on login/register endpoints.
 - CORS origins and the JWT secret are configured via environment variables but are not rotated or vaulted — fine for a demo deployment, not production-hardened.

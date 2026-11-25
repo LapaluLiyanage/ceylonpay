@@ -20,6 +20,7 @@ import lk.ceylonpay.repository.OutboxEventRepository;
 import lk.ceylonpay.repository.TransactionRepository;
 import lk.ceylonpay.repository.UserRepository;
 import lk.ceylonpay.repository.WalletRepository;
+import lk.ceylonpay.util.PhoneNumber;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.retry.annotation.Backoff;
@@ -70,7 +71,8 @@ public class TransferService {
      * later call with that key replays the cached result.
      */
     public TransactionResponse transferIdempotent(String idempotencyKey, String senderUserId,
-                                                   String toPhone, BigDecimal amount) {
+                                                   String rawToPhone, BigDecimal amount) {
+        String toPhone = normalizeRecipient(rawToPhone);
         String requestHash = IdempotencyService.hash(senderUserId + "|" + toPhone + "|" + amount);
         Optional<IdempotencyKey> existing = idempotencyService.begin(idempotencyKey, senderUserId, requestHash);
 
@@ -108,7 +110,8 @@ public class TransferService {
             backoff = @Backoff(delay = 50, multiplier = 2)
     )
     @Transactional
-    public TransactionResponse transfer(String senderUserId, String toPhone, BigDecimal amount) {
+    public TransactionResponse transfer(String senderUserId, String rawToPhone, BigDecimal amount) {
+        String toPhone = normalizeRecipient(rawToPhone);
         Wallet senderWallet = walletRepository.findByUserId(senderUserId)
                 .orElseThrow(() -> new WalletNotFoundException("Sender wallet not found"));
 
@@ -147,6 +150,14 @@ public class TransferService {
                         senderWallet.getBalance(), txn.getCreatedAt()))));
 
         return new TransactionResponse(txn.getId(), amount, toPhone, senderWallet.getBalance(), txn.getCreatedAt());
+    }
+
+    private static String normalizeRecipient(String rawToPhone) {
+        try {
+            return PhoneNumber.normalize(rawToPhone);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidTransferException("Invalid recipient phone number");
+        }
     }
 
     private String buildAuditDetail(Wallet sender, Wallet receiver, BigDecimal amount) {

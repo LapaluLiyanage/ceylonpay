@@ -12,14 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * Back-office view onto the reconciliation job.
- *
- * <p>Deliberately minimal for a student project — no role-based access
- * control is enforced here yet, so in the current state any authenticated
- * user can call these endpoints. A real deployment would gate this behind
- * an ADMIN role check (the {@code User.role} field already exists for
- * exactly that); called out explicitly rather than silently shipped as if
- * it were already access-controlled.</p>
+ * Back-office view onto the reconciliation job. Access is restricted to the
+ * ADMIN role in {@code SecurityConfig} ({@code /api/admin/**}).
  */
 @RestController
 @RequestMapping("/api/admin/reconciliation")

@@ -49,7 +49,7 @@ class AuthServiceTest {
     void registerSavesHashedPasswordAndReturnsTokenAndName() {
         RegisterRequest request = new RegisterRequest("Nimal Perera", "0771234567", "991234567V", "raw-password");
 
-        when(userRepository.findByPhone("0771234567")).thenReturn(Optional.empty());
+        when(userRepository.findByPhone("+94771234567")).thenReturn(Optional.empty());
         when(userRepository.findByNic("991234567V")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("raw-password")).thenReturn("hashed-password");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
@@ -57,7 +57,7 @@ class AuthServiceTest {
             saved.setId("user-123");
             return saved;
         });
-        when(jwtUtil.generateToken("user-123")).thenReturn("jwt-token");
+        when(jwtUtil.generateToken("user-123", "USER")).thenReturn("jwt-token");
 
         AuthResponse response = authService.register(request);
 
@@ -71,7 +71,7 @@ class AuthServiceTest {
     void registerCreatesAZeroBalanceWalletForTheNewUser() {
         RegisterRequest request = new RegisterRequest("Nimal Perera", "0771234567", "991234567V", "raw-password");
 
-        when(userRepository.findByPhone("0771234567")).thenReturn(Optional.empty());
+        when(userRepository.findByPhone("+94771234567")).thenReturn(Optional.empty());
         when(userRepository.findByNic("991234567V")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("raw-password")).thenReturn("hashed-password");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
@@ -79,7 +79,7 @@ class AuthServiceTest {
             saved.setId("user-123");
             return saved;
         });
-        when(jwtUtil.generateToken("user-123")).thenReturn("jwt-token");
+        when(jwtUtil.generateToken("user-123", "USER")).thenReturn("jwt-token");
 
         authService.register(request);
 
@@ -91,7 +91,7 @@ class AuthServiceTest {
     @Test
     void registerThrowsWhenPhoneAlreadyTaken() {
         RegisterRequest request = new RegisterRequest("Nimal Perera", "0771234567", "991234567V", "raw-password");
-        when(userRepository.findByPhone("0771234567")).thenReturn(Optional.of(new User()));
+        when(userRepository.findByPhone("+94771234567")).thenReturn(Optional.of(new User()));
 
         assertThatThrownBy(() -> authService.register(request))
                 .isInstanceOf(UserAlreadyExistsException.class);
@@ -100,7 +100,7 @@ class AuthServiceTest {
     @Test
     void registerThrowsWhenNicAlreadyTaken() {
         RegisterRequest request = new RegisterRequest("Nimal Perera", "0771234567", "991234567V", "raw-password");
-        when(userRepository.findByPhone("0771234567")).thenReturn(Optional.empty());
+        when(userRepository.findByPhone("+94771234567")).thenReturn(Optional.empty());
         when(userRepository.findByNic("991234567V")).thenReturn(Optional.of(new User()));
 
         assertThatThrownBy(() -> authService.register(request))
@@ -114,9 +114,9 @@ class AuthServiceTest {
         existing.setId("user-123");
         existing.setName("Nimal Perera");
         existing.setPassword("hashed-password");
-        when(userRepository.findByPhone("0771234567")).thenReturn(Optional.of(existing));
+        when(userRepository.findByPhone("+94771234567")).thenReturn(Optional.of(existing));
         when(passwordEncoder.matches("raw-password", "hashed-password")).thenReturn(true);
-        when(jwtUtil.generateToken("user-123")).thenReturn("jwt-token");
+        when(jwtUtil.generateToken("user-123", "USER")).thenReturn("jwt-token");
 
         AuthResponse response = authService.login(request);
 
@@ -128,7 +128,7 @@ class AuthServiceTest {
     @Test
     void loginThrowsWhenPhoneNotFound() {
         LoginRequest request = new LoginRequest("0771234567", "raw-password");
-        when(userRepository.findByPhone("0771234567")).thenReturn(Optional.empty());
+        when(userRepository.findByPhone("+94771234567")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(InvalidCredentialsException.class);
@@ -140,7 +140,7 @@ class AuthServiceTest {
         User existing = new User();
         existing.setId("user-123");
         existing.setPassword("hashed-password");
-        when(userRepository.findByPhone("0771234567")).thenReturn(Optional.of(existing));
+        when(userRepository.findByPhone("+94771234567")).thenReturn(Optional.of(existing));
         when(passwordEncoder.matches("wrong-password", "hashed-password")).thenReturn(false);
 
         assertThatThrownBy(() -> authService.login(request))

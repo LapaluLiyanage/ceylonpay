@@ -10,6 +10,7 @@ import lk.ceylonpay.exception.UserAlreadyExistsException;
 import lk.ceylonpay.repository.UserRepository;
 import lk.ceylonpay.repository.WalletRepository;
 import lk.ceylonpay.security.JwtUtil;
+import lk.ceylonpay.util.PhoneNumber;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -32,7 +33,8 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.findByPhone(request.phone()).isPresent()) {
+        String phone = PhoneNumber.normalize(request.phone());
+        if (userRepository.findByPhone(phone).isPresent()) {
             throw new UserAlreadyExistsException("Phone number already registered");
         }
         if (userRepository.findByNic(request.nic()).isPresent()) {
@@ -41,7 +43,7 @@ public class AuthService {
 
         User user = new User();
         user.setName(request.name());
-        user.setPhone(request.phone());
+        user.setPhone(phone);
         user.setNic(request.nic());
         user.setPassword(passwordEncoder.encode(request.password()));
 
@@ -58,7 +60,10 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByPhone(request.phone())
+        if (!PhoneNumber.isValid(request.phone())) {
+            throw new InvalidCredentialsException("Invalid phone number or password");
+        }
+        User user = userRepository.findByPhone(PhoneNumber.normalize(request.phone()))
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid phone number or password"));
 
         // Defense in depth: the system/suspense account (see SystemAccountService) has no real

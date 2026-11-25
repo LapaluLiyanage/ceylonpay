@@ -19,4 +19,16 @@ describe('rowFor', () => {
     expect(rowFor({ ...base, direction: 'SENT', status: 'SUCCESS' }).canCancel).toBe(false);
     expect(rowFor({ ...base, direction: 'SENT', status: 'CANCELLED' }).stateLabel).toBe('Cancelled');
   });
+
+  it('offers a scam report only on completed sent transfers', () => {
+    expect(rowFor({ ...base, direction: 'SENT', status: 'SUCCESS' }).canReport).toBe(true);
+    expect(rowFor({ ...base, direction: 'RECEIVED', status: 'SUCCESS' }).canReport).toBe(false);
+    expect(rowFor({ ...base, direction: 'SENT', status: 'PENDING_REVIEW' }).canReport).toBe(false);
+  });
+
+  it('labels reversed transfers and refunds', () => {
+    expect(rowFor({ ...base, direction: 'SENT', status: 'REVERSED' }).stateLabel).toBe('Reversed');
+    expect(rowFor({ ...base, direction: 'RECEIVED', status: 'REVERSAL' }).stateLabel).toBe('Refund');
+    expect(rowFor({ ...base, direction: 'SENT', status: 'REVERSAL' }).stateLabel).toBe('Refunded');
+  });
 });

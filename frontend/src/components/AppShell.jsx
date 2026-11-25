@@ -14,6 +14,7 @@ export function AppShell({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const navItems = user?.role === 'ADMIN' ? [...NAV_ITEMS, { path: '/admin', label: 'Review' }] : NAV_ITEMS;
   const initials = (user?.name || '')
     .split(/\s+/)
     .filter(Boolean)
@@ -43,7 +44,7 @@ export function AppShell({ children }) {
             <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 16, fontWeight: 600 }}>CeylonPay</span>
           </div>
           <nav style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 999, background: '#181b18', border: '1px solid rgba(255,255,255,.05)' }}>
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const active = location.pathname === item.path;
               return (
                 <button

@@ -120,15 +120,16 @@ export function timestampLabel(iso) {
   return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-const STATUS_LABELS = { PENDING_REVIEW: 'Under review', REJECTED: 'Declined', CANCELLED: 'Cancelled' };
+const STATUS_LABELS = { PENDING_REVIEW: 'Under review', REJECTED: 'Declined', CANCELLED: 'Cancelled', REVERSED: 'Reversed' };
 
 export function rowFor(tx) {
   const isOut = tx.direction === 'SENT';
   return {
     id: tx.id,
     direction: tx.direction,
-    stateLabel: STATUS_LABELS[tx.status] || (isOut ? 'Sent' : 'Received'),
+    stateLabel: tx.status === 'REVERSAL' ? (isOut ? 'Refunded' : 'Refund') : STATUS_LABELS[tx.status] || (isOut ? 'Sent' : 'Received'),
     canCancel: isOut && tx.status === 'PENDING_REVIEW',
+    canReport: isOut && tx.status === 'SUCCESS',
     title: isOut ? `To ${tx.counterpartyName}` : `From ${tx.counterpartyName}`,
     subtitle: `${toDisplayPhone(normalizeStoredPhone(tx.counterpartyPhone))} · ${timestampLabel(tx.timestamp)} · ${tx.id}`,
     amountText: (isOut ? '− ' : '+ ') + formatMoney(tx.amount),

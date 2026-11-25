@@ -12,6 +12,18 @@ export function rejectReview(id) {
   return request(`/api/admin/reviews/${id}/reject`, { method: 'POST' });
 }
 
+export function getMules(hours = 24) {
+  return request(`/api/admin/mules?hours=${hours}`);
+}
+
+export function holdAccount(userId) {
+  return request(`/api/admin/mules/${userId}/hold`, { method: 'POST' });
+}
+
+export function releaseAccount(userId) {
+  return request(`/api/admin/mules/${userId}/release`, { method: 'POST' });
+}
+
 export function getReports(status = 'OPEN') {
   return request(`/api/admin/reports?status=${encodeURIComponent(status)}`);
 }

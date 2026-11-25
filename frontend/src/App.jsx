@@ -11,6 +11,7 @@ import History from './pages/History';
 import Safety from './pages/Safety';
 import Admin from './pages/Admin';
 import VerifyPhone from './pages/VerifyPhone';
+import Receive from './pages/Receive';
 
 export default function App() {
   return (
@@ -49,6 +50,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <History />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/receive"
+            element={
+              <ProtectedRoute>
+                <Receive />
               </ProtectedRoute>
             }
           />

@@ -69,6 +69,9 @@ export const UI = {
     holdTitle: 'We need to review this transfer first',
     understand: 'I understand the risk and want to send anyway',
     holdNote: 'No money leaves your wallet until a reviewer approves it. You can cancel any time before then.',
+    otpSend: 'Text me a code',
+    otpEnter: 'Enter the 6-digit code we texted you',
+    otpResend: 'Send a new code',
   },
   si: {
     warnTitle: 'මෙම මුදල් හුවමාරුව අවදානම්ය',
@@ -76,6 +79,9 @@ export const UI = {
     understand: 'මම අවදානම තේරුම් ගනිමි; කෙසේ වෙතත් යවන්න කැමතියි',
     holdNote:
       'සමාලෝචකයෙකු අනුමත කරන තෙක් ඔබගේ පසුම්බියෙන් කිසිදු මුදලක් පිටවන්නේ නැත. ඊට පෙර ඕනෑම වේලාවක අවලංගු කළ හැක.',
+    otpSend: 'මට කේතයක් එවන්න',
+    otpEnter: 'අපි එවූ ඉලක්කම් 6 ක කේතය ඇතුළත් කරන්න',
+    otpResend: 'නව කේතයක් එවන්න',
   },
   ta: {
     warnTitle: 'இந்தப் பரிமாற்றம் ஆபத்தானதாகத் தெரிகிறது',
@@ -83,6 +89,9 @@ export const UI = {
     understand: 'ஆபத்தைப் புரிந்துகொள்கிறேன்; இருந்தாலும் அனுப்ப விரும்புகிறேன்',
     holdNote:
       'மதிப்பாய்வாளர் ஒப்புதல் அளிக்கும் வரை உங்கள் வாலட்டிலிருந்து பணம் வெளியேறாது. அதற்கு முன் எப்போது வேண்டுமானாலும் ரத்து செய்யலாம்.',
+    otpSend: 'எனக்கு ஒரு குறியீட்டை அனுப்புங்கள்',
+    otpEnter: 'நாங்கள் அனுப்பிய 6 இலக்கக் குறியீட்டை உள்ளிடவும்',
+    otpResend: 'புதிய குறியீட்டை அனுப்புங்கள்',
   },
 };
 

@@ -1,8 +1,14 @@
 import { request } from './client';
 
-export function transfer(toPhone, amount, acknowledgeRisk = false) {
+export function transfer(toPhone, amount, acknowledgeRisk = false, otpCode = null) {
   const body = acknowledgeRisk ? { toPhone, amount, acknowledgeRisk: true } : { toPhone, amount };
+  if (acknowledgeRisk && otpCode) body.otpCode = otpCode;
   return request('/api/transfer', { method: 'POST', body });
+}
+
+/** Texts the sender a code for this exact transfer. Resolves { required, devCode? }. */
+export function requestTransferCode(toPhone, amount) {
+  return request('/api/transfer/otp', { method: 'POST', body: { toPhone, amount } });
 }
 
 /** Scam check preview: { score, outcome: ALLOW|WARN|HOLD, reasons: [{ code, message }] }. */

@@ -25,9 +25,10 @@ export function setTokensRefreshedHandler(fn) {
 }
 
 export class ApiError extends Error {
-  constructor(status, message) {
+  constructor(status, message, code) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -81,7 +82,7 @@ export async function request(path, { method = 'GET', body } = {}, alreadyRetrie
 
   if (!response.ok) {
     const message = (data && data.error) || 'Something went wrong. Please try again.';
-    throw new ApiError(response.status, message);
+    throw new ApiError(response.status, message, data && data.code);
   }
 
   return data;

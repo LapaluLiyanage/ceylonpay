@@ -46,8 +46,8 @@ export default function Register() {
     setAuthError('');
     setBusy(true);
     try {
-      await register({ name: name.trim(), phone: digitsOnly(phone), nic: nicValue, password });
-      navigate('/dashboard');
+      const session = await register({ name: name.trim(), phone: digitsOnly(phone), nic: nicValue, password });
+      navigate(session.phoneVerified === false ? '/verify' : '/dashboard');
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {
         setAuthError(err.message);

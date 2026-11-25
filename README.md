@@ -121,6 +121,10 @@ cd frontend && npm test   # frontend — Vitest
 
 Access tokens last 15 minutes. Login also returns a **refresh token** (30 days, stored only as a hash) that the app uses to renew the access token quietly. Refresh tokens rotate on every use; if an already-used token is presented again, the whole login session is revoked. `POST /api/auth/logout` revokes the session. Configure with `jwt.expiration-ms` and `jwt.refresh-expiration-days`.
 
+## One-time codes (SMS)
+
+Off by default, because codes are only useful once an SMS provider is connected. When `CEYLONPAY_OTP_ENABLED=true`: new accounts must verify their phone (a 6-digit code) before they can send money, and a transfer that carries a risk warning also needs a fresh code texted to the sender, valid only for that recipient and amount. Codes last 5 minutes, allow 5 wrong tries, and can be re-requested every 30 seconds. Existing accounts are treated as verified. Messages go through the `SmsSender` interface; the built-in implementation only logs them (development), so add one for your provider (Dialog, Mobitel or a bulk-SMS gateway) and set `ceylonpay.sms.provider` to its name. For local demos, `CEYLONPAY_SMS_DEV_CODE_IN_RESPONSE=true` returns the code in the API response and shows it in the UI. Never set that in production.
+
 ## Admin access
 
 `/api/admin/**` requires the `ADMIN` role (carried as a claim in the JWT). Nobody can become an admin through the API. Register the account first, then set `CEYLONPAY_ADMIN_PHONE` to its phone number and restart; the account is promoted at startup.

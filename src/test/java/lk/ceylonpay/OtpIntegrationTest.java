@@ -33,7 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** One-time codes switched on (the other integration tests switch them off). */
-@SpringBootTest(properties = {"ceylonpay.rate-limit.enabled=false", "ceylonpay.sms.dev-code-in-response=true"})
+@SpringBootTest(properties = {"ceylonpay.rate-limit.enabled=false", "ceylonpay.otp.enabled=true",
+        "ceylonpay.sms.dev-code-in-response=true"})
 @AutoConfigureMockMvc
 class OtpIntegrationTest {
 

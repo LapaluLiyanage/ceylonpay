@@ -70,10 +70,10 @@ class TransferServiceTest {
         Wallet senderWallet = walletWithBalance("wallet-sender", "user-sender", "500.0000");
         Wallet recipientWallet = walletWithBalance("wallet-recipient", "user-recipient", "100.0000");
         User recipientUser = recipientWallet.getUser();
-        recipientUser.setPhone("0722222222");
+        recipientUser.setPhone("+94722222222");
 
         when(walletRepository.findByUserId("user-sender")).thenReturn(Optional.of(senderWallet));
-        when(userRepository.findByPhone("0722222222")).thenReturn(Optional.of(recipientUser));
+        when(userRepository.findByPhone("+94722222222")).thenReturn(Optional.of(recipientUser));
         when(walletRepository.findByUserId("user-recipient")).thenReturn(Optional.of(recipientWallet));
 
         TransactionResponse response =
@@ -81,7 +81,7 @@ class TransferServiceTest {
 
         assertThat(senderWallet.getBalance()).isEqualByComparingTo("300.0000");
         assertThat(recipientWallet.getBalance()).isEqualByComparingTo("300.0000");
-        assertThat(response.recipientPhone()).isEqualTo("0722222222");
+        assertThat(response.recipientPhone()).isEqualTo("+94722222222");
         assertThat(response.amount()).isEqualByComparingTo("200.00");
         assertThat(response.newBalance()).isEqualByComparingTo("300.0000");
 
@@ -96,10 +96,10 @@ class TransferServiceTest {
         Wallet senderWallet = walletWithBalance("wallet-sender", "user-sender", "100.0000");
         Wallet recipientWallet = walletWithBalance("wallet-recipient", "user-recipient", "50.0000");
         User recipientUser = recipientWallet.getUser();
-        recipientUser.setPhone("0722222222");
+        recipientUser.setPhone("+94722222222");
 
         when(walletRepository.findByUserId("user-sender")).thenReturn(Optional.of(senderWallet));
-        when(userRepository.findByPhone("0722222222")).thenReturn(Optional.of(recipientUser));
+        when(userRepository.findByPhone("+94722222222")).thenReturn(Optional.of(recipientUser));
         when(walletRepository.findByUserId("user-recipient")).thenReturn(Optional.of(recipientWallet));
 
         assertThatThrownBy(() ->
@@ -117,7 +117,7 @@ class TransferServiceTest {
     void transfer_shouldThrow_whenRecipientNotFound() {
         Wallet senderWallet = walletWithBalance("wallet-sender", "user-sender", "500.0000");
         when(walletRepository.findByUserId("user-sender")).thenReturn(Optional.of(senderWallet));
-        when(userRepository.findByPhone("0799999999")).thenReturn(Optional.empty());
+        when(userRepository.findByPhone("+94799999999")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() ->
                 transferService.transfer("user-sender", "0799999999", new BigDecimal("50.00")))
@@ -131,10 +131,10 @@ class TransferServiceTest {
     void transfer_shouldThrow_whenTransferringToSelf() {
         Wallet senderWallet = walletWithBalance("wallet-sender", "user-sender", "500.0000");
         User senderUser = senderWallet.getUser();
-        senderUser.setPhone("0711111111");
+        senderUser.setPhone("+94711111111");
 
         when(walletRepository.findByUserId("user-sender")).thenReturn(Optional.of(senderWallet));
-        when(userRepository.findByPhone("0711111111")).thenReturn(Optional.of(senderUser));
+        when(userRepository.findByPhone("+94711111111")).thenReturn(Optional.of(senderUser));
 
         assertThatThrownBy(() ->
                 transferService.transfer("user-sender", "0711111111", new BigDecimal("50.00")))

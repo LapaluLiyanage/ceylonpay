@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { timestampLabel } from '../components/Activity';
 import { getBalance } from '../api/wallet';
-import { transfer } from '../api/transfer';
+import { transfer, riskCheck } from '../api/transfer';
 import { lookupUser } from '../api/users';
 import { ApiError } from '../api/client';
 import { formatMoney, parseAmountInput } from '../utils/money';
@@ -33,6 +33,7 @@ export default function Transfer() {
   const [result, setResult] = useState(null);
   const [blockedMessage, setBlockedMessage] = useState('');
   const [checking, setChecking] = useState(false);
+  const [ack, setAck] = useState(false);
 
   useEffect(() => {
     getBalance()
@@ -56,7 +57,9 @@ export default function Transfer() {
     try {
       // Name check: show who owns this number before any money moves.
       const owner = await lookupUser(toApiPhone(phone));
-      setDraft({ phoneDigits: phone, amountValue: parsed.value, recipientName: owner.name });
+      const risk = await riskCheck(toApiPhone(phone), parsed.value);
+      setAck(false);
+      setDraft({ phoneDigits: phone, amountValue: parsed.value, recipientName: owner.name, risk });
       setStage('confirm');
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
@@ -73,11 +76,24 @@ export default function Transfer() {
     if (busy) return;
     setBusy(true);
     try {
-      const data = await transfer(toApiPhone(draft.phoneDigits), draft.amountValue);
+      const data = await transfer(toApiPhone(draft.phoneDigits), draft.amountValue, draft.risk?.outcome === 'WARN' && ack);
       setResult(data);
       setBalance(data.newBalance);
       setStage('sent');
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        // The risk picture changed since the preview: show the new warning and ask again.
+        try {
+          const risk = await riskCheck(toApiPhone(draft.phoneDigits), draft.amountValue);
+          setDraft((d) => ({ ...d, risk }));
+          setAck(false);
+          return;
+        } catch {
+          setFailKind('network');
+          setStage('failed');
+          return;
+        }
+      }
       if (err instanceof ApiError && err.status === 403) {
         setBlockedMessage(err.message);
         setFailKind('blocked');
@@ -233,10 +249,43 @@ export default function Transfer() {
                 </div>
               </div>
 
+              {draft.risk && draft.risk.outcome !== 'ALLOW' && (
+                <div
+                  role="alert"
+                  style={{
+                    padding: 14,
+                    borderRadius: 12,
+                    marginBottom: 14,
+                    background: draft.risk.outcome === 'HOLD' ? '#fbe3dc' : '#f6edd3',
+                    border: `1px solid ${draft.risk.outcome === 'HOLD' ? 'rgba(200,70,40,.35)' : 'rgba(190,150,40,.3)'}`,
+                    color: draft.risk.outcome === 'HOLD' ? '#7a2a14' : '#6b530c',
+                  }}
+                >
+                  <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>
+                    {draft.risk.outcome === 'HOLD' ? 'We need to review this transfer first' : 'This transfer looks risky'}
+                  </p>
+                  <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
+                    {draft.risk.reasons.map((r) => (
+                      <li key={r.code}>{r.message}</li>
+                    ))}
+                  </ul>
+                  {draft.risk.outcome === 'WARN' && (
+                    <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, fontWeight: 600 }}>
+                      <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />I understand the risk and want to send anyway
+                    </label>
+                  )}
+                  {draft.risk.outcome === 'HOLD' && (
+                    <p style={{ margin: 0, fontSize: 13 }}>No money leaves your wallet until a reviewer approves it. You can cancel any time before then.</p>
+                  )}
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: 10, padding: 14, borderRadius: 12, background: '#f6edd3', border: '1px solid rgba(190,150,40,.3)', marginBottom: 22 }}>
                 <span style={{ color: '#8a6a12', fontWeight: 700, lineHeight: 1.4 }}>!</span>
                 <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: '#6b530c' }}>
-                  Once sent, this transfer can&apos;t be reversed. Check the name above is the person you mean to pay.
+                  {draft.risk?.outcome === 'HOLD'
+                    ? 'Check the name above is the person you mean to pay.'
+                    : "Once sent, this transfer can't be reversed. Check the name above is the person you mean to pay."}
                 </p>
               </div>
 
@@ -244,8 +293,8 @@ export default function Transfer() {
                 <Button variant="outlineDark" style={{ flex: '0 1 130px' }} onClick={() => setStage('form')}>
                   Edit
                 </Button>
-                <Button variant="dark" style={{ flex: '1 1 180px', minWidth: 0 }} onClick={confirmTransfer} disabled={busy}>
-                  {busy ? 'Sending…' : `Send ${formatMoney(draft.amountValue)}`}
+                <Button variant="dark" style={{ flex: '1 1 180px', minWidth: 0 }} onClick={confirmTransfer} disabled={busy || (draft.risk?.outcome === 'WARN' && !ack)}>
+                  {busy ? 'Sending…' : draft.risk?.outcome === 'HOLD' ? 'Submit for review' : `Send ${formatMoney(draft.amountValue)}`}
                 </Button>
               </div>
             </section>
@@ -259,7 +308,7 @@ export default function Transfer() {
                   height: 56,
                   margin: '0 auto 20px',
                   borderRadius: 16,
-                  background: '#c9f24d',
+                  background: result.status === 'PENDING_REVIEW' ? '#f6edd3' : '#c9f24d',
                   color: '#131707',
                   display: 'flex',
                   alignItems: 'center',
@@ -267,15 +316,20 @@ export default function Transfer() {
                   fontSize: 26,
                 }}
               >
-                ✓
+                {result.status === 'PENDING_REVIEW' ? '…' : '✓'}
               </div>
               <h2 style={{ margin: '0 0 6px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: '-.02em' }}>
-                Sent {formatMoney(result.amount)}
+                {result.status === 'PENDING_REVIEW' ? 'Held for review' : 'Sent'} {formatMoney(result.amount)}
               </h2>
               <p style={{ margin: '0 0 24px', fontSize: 14, color: 'rgba(20,23,15,.6)' }}>
                 to {draft.recipientName} · {toDisplayPhone(draft.phoneDigits)} ·{' '}
                 {timestampLabel(result.timestamp)}
               </p>
+              {result.status === 'PENDING_REVIEW' && (
+                <p style={{ margin: '-8px 0 24px', fontSize: 13, lineHeight: 1.6, color: 'rgba(20,23,15,.65)' }}>
+                  Nothing has left your wallet yet. We&apos;ll move the money once a reviewer approves it. You can cancel it from Activity.
+                </p>
+              )}
               <div style={{ borderRadius: 16, background: '#fff', overflow: 'hidden', textAlign: 'left', marginBottom: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: 16, borderBottom: '1px solid rgba(20,23,15,.08)' }}>
                   <span style={{ fontSize: 13, color: 'rgba(20,23,15,.55)' }}>Reference</span>

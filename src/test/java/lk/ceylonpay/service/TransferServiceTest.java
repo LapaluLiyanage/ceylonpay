@@ -53,10 +53,19 @@ class TransferServiceTest {
     private SafetyService safetyService;
 
     @Mock
+    private lk.ceylonpay.risk.RiskService riskService;
+
+    @Mock
     private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @InjectMocks
     private TransferService transferService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void riskAllowsByDefault() {
+        org.mockito.Mockito.lenient().when(riskService.assess(any(), any(), any()))
+                .thenReturn(lk.ceylonpay.risk.RiskAssessment.allow());
+    }
 
     private Wallet walletWithBalance(String id, String userId, String balance) {
         Wallet wallet = new Wallet();
@@ -80,7 +89,7 @@ class TransferServiceTest {
         when(walletRepository.findByUserId("user-recipient")).thenReturn(Optional.of(recipientWallet));
 
         TransactionResponse response =
-                transferService.transfer("user-sender", "0722222222", new BigDecimal("200.00"));
+                transferService.transfer("user-sender", "0722222222", new BigDecimal("200.00"), false);
 
         assertThat(senderWallet.getBalance()).isEqualByComparingTo("300.0000");
         assertThat(recipientWallet.getBalance()).isEqualByComparingTo("300.0000");
@@ -106,7 +115,7 @@ class TransferServiceTest {
         when(walletRepository.findByUserId("user-recipient")).thenReturn(Optional.of(recipientWallet));
 
         assertThatThrownBy(() ->
-                transferService.transfer("user-sender", "0722222222", new BigDecimal("200.00")))
+                transferService.transfer("user-sender", "0722222222", new BigDecimal("200.00"), false))
                 .isInstanceOf(InsufficientBalanceException.class);
 
         assertThat(senderWallet.getBalance()).isEqualByComparingTo("100.0000");
@@ -123,7 +132,7 @@ class TransferServiceTest {
         when(userRepository.findByPhone("+94799999999")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() ->
-                transferService.transfer("user-sender", "0799999999", new BigDecimal("50.00")))
+                transferService.transfer("user-sender", "0799999999", new BigDecimal("50.00"), false))
                 .isInstanceOf(WalletNotFoundException.class);
 
         verify(walletRepository, never()).save(any());
@@ -140,7 +149,7 @@ class TransferServiceTest {
         when(userRepository.findByPhone("+94711111111")).thenReturn(Optional.of(senderUser));
 
         assertThatThrownBy(() ->
-                transferService.transfer("user-sender", "0711111111", new BigDecimal("50.00")))
+                transferService.transfer("user-sender", "0711111111", new BigDecimal("50.00"), false))
                 .isInstanceOf(InvalidTransferException.class);
 
         verify(walletRepository, never()).save(any());

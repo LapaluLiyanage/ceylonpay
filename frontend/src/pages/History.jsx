@@ -14,6 +14,8 @@ export default function History() {
   const [reporting, setReporting] = useState(null);
   const [note, setNote] = useState('');
   const [notice, setNotice] = useState('');
+  // Transfers reported in this visit; the server also refuses a second report, this just hides the button.
+  const [reportedIds, setReportedIds] = useState(() => new Set());
 
   const load = useCallback(() => {
     setLoading(true);
@@ -31,6 +33,7 @@ export default function History() {
   async function submitReport() {
     try {
       await reportTransfer(reporting.id, note.trim());
+      setReportedIds((prev) => new Set(prev).add(reporting.id));
       setNotice('Reported. The receiving account is on hold while we review it.');
     } catch (err) {
       setNotice(err?.message || "Couldn't send the report. Try again.");
@@ -141,7 +144,7 @@ export default function History() {
                   action={
                     rowFor(tx).canCancel
                       ? { label: 'Cancel', onClick: () => cancel(tx.id) }
-                      : rowFor(tx).canReport
+                      : rowFor(tx).canReport && !reportedIds.has(tx.id)
                         ? { label: 'Report scam', onClick: () => setReporting(tx) }
                         : null
                   }

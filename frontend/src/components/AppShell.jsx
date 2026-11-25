@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { path: '/dashboard', label: 'Home' },
   { path: '/deposit', label: 'Deposit' },
   { path: '/transfer', label: 'Send' },
+  { path: '/receive', label: 'Receive' },
   { path: '/history', label: 'Activity' },
   { path: '/safety', label: 'Safety' },
 ];

@@ -9,6 +9,7 @@ public record TransactionHistoryResponse(
         String counterpartyName,
         String counterpartyPhone,
         BigDecimal amount,
-        LocalDateTime timestamp
+        LocalDateTime timestamp,
+        String status
 ) {
 }

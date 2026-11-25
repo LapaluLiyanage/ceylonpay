@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -36,8 +37,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final Map<String, Integer> LIMITS = Map.of(
             "/api/auth/login", 10,
             "/api/auth/register", 5,
-            "/api/transfer", 30
+            "/api/transfer", 30,
+            "/api/users/lookup", 30
     );
+
+    /** Turned off only by integration tests, which register many users from one client address. */
+    @Value("${ceylonpay.rate-limit.enabled:true}")
+    private boolean enabled = true;
 
     private final AtomicLong lastPruneMillis = new AtomicLong(0);
     private final Map<String, Window> buckets = new ConcurrentHashMap<>();
@@ -54,7 +60,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !LIMITS.containsKey(request.getRequestURI());
+        return !enabled || !LIMITS.containsKey(request.getRequestURI());
     }
 
     @Override

@@ -106,6 +106,12 @@ cd frontend && npm test   # frontend — Vitest
 - **Access control is resource-scoped** — a user's JWT identifies them; every wallet/transaction lookup is implicitly scoped to that identity rather than gated by a separate permission check.
 - **Configuration is environment-driven** — the same jar runs locally, in Docker, and on Render, with only environment variables changing between them (database connection, JWT secret, allowed CORS origins).
 
+## Scam protection
+
+- **Name check** — before sending, the app shows who owns the number (`K. Perera`).
+- **My Safety** — freeze your wallet, or set your own daily and night (22:00–06:00) limits.
+- **Scam Shield** — every transfer gets a 0–100 risk score from transparent rules (first payment to this number, much larger than usual, almost all of your balance, brand-new receiving account, receiver collecting from many people, and more). Below 40 it goes through, 40–74 the sender must confirm the warnings, 75+ the transfer is **held**: no money moves until an admin approves it (`/api/admin/reviews`) or the sender cancels it. Rules live in `risk/RiskService.java`.
+
 ## Admin access
 
 `/api/admin/**` requires the `ADMIN` role (carried as a claim in the JWT). Nobody can become an admin through the API. Register the account first, then set `CEYLONPAY_ADMIN_PHONE` to its phone number and restart; the account is promoted at startup.

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
-import { getHistory } from '../api/transfer';
+import { getHistory, cancelTransfer } from '../api/transfer';
 import { SkeletonRows, ActivityErrorState, ActivityEmptyState, TransactionRow, rowFor } from '../components/Activity';
 
 export default function History() {
@@ -23,6 +23,14 @@ export default function History() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function cancel(id) {
+    try {
+      await cancelTransfer(id);
+    } finally {
+      load();
+    }
+  }
 
   const ready = !loading && !error;
   const hasAny = ready && txs.length > 0;
@@ -80,7 +88,11 @@ export default function History() {
           {hasAny && filtered.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {filtered.map((tx) => (
-                <TransactionRow key={tx.id} {...rowFor(tx)} />
+                <TransactionRow
+                  key={tx.id}
+                  {...rowFor(tx)}
+                  action={rowFor(tx).canCancel ? { label: 'Cancel', onClick: () => cancel(tx.id) } : null}
+                />
               ))}
             </div>
           )}

@@ -70,3 +70,28 @@ describe('name check and safety API', () => {
     });
   });
 });
+
+describe('scam check API', () => {
+  it('transfer only sends acknowledgeRisk when it is true', async () => {
+    await transfer('+94799999998', 200, true);
+    expect(request).toHaveBeenCalledWith('/api/transfer', {
+      method: 'POST',
+      body: { toPhone: '+94799999998', amount: 200, acknowledgeRisk: true },
+    });
+  });
+
+  it('riskCheck posts to /api/transfer/risk-check', async () => {
+    const { riskCheck } = await import('./transfer');
+    await riskCheck('+94799999998', 200);
+    expect(request).toHaveBeenCalledWith('/api/transfer/risk-check', {
+      method: 'POST',
+      body: { toPhone: '+94799999998', amount: 200 },
+    });
+  });
+
+  it('cancelTransfer posts to the cancel path', async () => {
+    const { cancelTransfer } = await import('./transfer');
+    await cancelTransfer('abc');
+    expect(request).toHaveBeenCalledWith('/api/transfer/abc/cancel', { method: 'POST' });
+  });
+});

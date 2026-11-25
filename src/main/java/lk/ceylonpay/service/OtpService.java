@@ -24,6 +24,9 @@ import java.time.LocalDateTime;
  * One-time codes sent by SMS. Used to prove phone ownership at registration and to add a second
  * confirmation to a risky transfer.
  *
+ * <p><b>Off by default.</b> Codes are only useful once a real {@link SmsSender} is configured; with the
+ * development logger, users would never receive them. Set {@code CEYLONPAY_OTP_ENABLED=true} to turn them on.</p>
+ *
  * <p>A code lasts 5 minutes, allows 5 wrong guesses, can be requested at most once every 30 seconds,
  * is stored only as a hash, and (for a transfer) works only for the recipient and amount it was issued for.</p>
  */
@@ -43,7 +46,7 @@ public class OtpService {
     private final boolean devCodeInResponse;
 
     public OtpService(OtpChallengeRepository repository, OtpAttemptRecorder attemptRecorder, SmsSender smsSender,
-                      @Value("${ceylonpay.otp.enabled:true}") boolean enabled,
+                      @Value("${ceylonpay.otp.enabled:false}") boolean enabled,
                       @Value("${ceylonpay.sms.dev-code-in-response:false}") boolean devCodeInResponse) {
         this.repository = repository;
         this.attemptRecorder = attemptRecorder;

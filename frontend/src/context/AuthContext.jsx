@@ -74,14 +74,22 @@ export function AuthProvider({ children }) {
 
   async function login({ phone, password }) {
     const data = await apiLogin({ phone: toApiPhone(phone), password });
-    persistSession(data.token, { id: data.userId, name: data.name, phone, role: data.role }, data.refreshToken);
+    persistSession(data.token, { id: data.userId, name: data.name, phone, role: data.role, phoneVerified: data.phoneVerified }, data.refreshToken);
     return data;
   }
 
   async function register({ name, phone, nic, password }) {
     const data = await apiRegister({ name, phone: toApiPhone(phone), nic, password });
-    persistSession(data.token, { id: data.userId, name: data.name, phone, role: data.role }, data.refreshToken);
+    persistSession(data.token, { id: data.userId, name: data.name, phone, role: data.role, phoneVerified: data.phoneVerified }, data.refreshToken);
     return data;
+  }
+
+  function markPhoneVerified() {
+    setUser((current) => {
+      const next = { ...current, phoneVerified: true };
+      localStorage.setItem(USER_KEY, JSON.stringify(next));
+      return next;
+    });
   }
 
   function logout() {
@@ -92,7 +100,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ token, user, isReady, login, register, logout }}>
+    <AuthContext.Provider value={{ token, user, isReady, login, register, logout, markPhoneVerified }}>
       {children}
     </AuthContext.Provider>
   );

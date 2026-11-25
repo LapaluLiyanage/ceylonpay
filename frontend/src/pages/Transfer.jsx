@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { timestampLabel } from '../components/Activity';
 import { getBalance } from '../api/wallet';
-import { transfer, riskCheck } from '../api/transfer';
+import { transfer, riskCheck, requestTransferCode } from '../api/transfer';
 import { lookupUser } from '../api/users';
 import { useLanguage } from '../context/LanguageContext';
 import { reasonText } from '../i18n/strings';
@@ -37,12 +37,37 @@ export default function Transfer() {
   const [blockedMessage, setBlockedMessage] = useState('');
   const [checking, setChecking] = useState(false);
   const [ack, setAck] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpNeeded, setOtpNeeded] = useState(true);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpErr, setOtpErr] = useState('');
+  const [devCode, setDevCode] = useState('');
 
   useEffect(() => {
     getBalance()
       .then((data) => setBalance(data.balance))
       .catch(() => setBalanceError(true));
   }, []);
+
+  function resetOtp() {
+    setOtpSent(false);
+    setOtpNeeded(true);
+    setOtpCode('');
+    setOtpErr('');
+    setDevCode('');
+  }
+
+  async function sendCode() {
+    setOtpErr('');
+    try {
+      const sent = await requestTransferCode(toApiPhone(draft.phoneDigits), draft.amountValue);
+      setOtpNeeded(sent.required);
+      setOtpSent(true);
+      setDevCode(sent.devCode || '');
+    } catch (err) {
+      setOtpErr(err.message);
+    }
+  }
 
   async function reviewTransfer(e) {
     e.preventDefault();
@@ -62,6 +87,7 @@ export default function Transfer() {
       const owner = await lookupUser(toApiPhone(phone));
       const risk = await riskCheck(toApiPhone(phone), parsed.value);
       setAck(false);
+      resetOtp();
       setDraft({ phoneDigits: phone, amountValue: parsed.value, recipientName: owner.name, risk });
       setStage('confirm');
     } catch (err) {
@@ -79,17 +105,23 @@ export default function Transfer() {
     if (busy) return;
     setBusy(true);
     try {
-      const data = await transfer(toApiPhone(draft.phoneDigits), draft.amountValue, draft.risk?.outcome === 'WARN' && ack);
+      const data = await transfer(toApiPhone(draft.phoneDigits), draft.amountValue, draft.risk?.outcome === 'WARN' && ack, otpNeeded ? otpCode : null);
       setResult(data);
       setBalance(data.newBalance);
       setStage('sent');
     } catch (err) {
+      if (err instanceof ApiError && (err.code === 'INVALID_OTP' || err.code === 'OTP_REQUIRED')) {
+        // Stay on the confirm screen: the code was wrong, expired or missing.
+        setOtpErr(err.message);
+        return;
+      }
       if (err instanceof ApiError && err.status === 409) {
         // The risk picture changed since the preview: show the new warning and ask again.
         try {
           const risk = await riskCheck(toApiPhone(draft.phoneDigits), draft.amountValue);
           setDraft((d) => ({ ...d, risk }));
           setAck(false);
+          resetOtp();
           return;
         } catch {
           setFailKind('network');
@@ -278,6 +310,41 @@ export default function Transfer() {
                       {t('understand')}
                     </label>
                   )}
+                  {draft.risk.outcome === 'WARN' && ack && (
+                    <div style={{ marginTop: 12 }}>
+                      {!otpSent ? (
+                        <button
+                          type="button"
+                          onClick={sendCode}
+                          style={{ padding: '9px 14px', borderRadius: 10, background: '#14170f', color: '#f3f4ef', fontSize: 13, fontWeight: 700 }}
+                        >
+                          {t('otpSend')}
+                        </button>
+                      ) : (
+                        otpNeeded && (
+                          <>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('otpEnter')}</label>
+                            <input
+                              value={otpCode}
+                              onChange={(e) => {
+                                setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                                setOtpErr('');
+                              }}
+                              inputMode="numeric"
+                              autoComplete="one-time-code"
+                              placeholder="000000"
+                              style={{ width: 160, height: 42, padding: '0 12px', borderRadius: 10, border: '1px solid rgba(20,23,15,.3)', fontSize: 20, letterSpacing: '.25em', marginRight: 8 }}
+                            />
+                            <button type="button" onClick={sendCode} style={{ fontSize: 12, fontWeight: 700, textDecoration: 'underline' }}>
+                              {t('otpResend')}
+                            </button>
+                            {devCode && <p style={{ margin: '6px 0 0', fontSize: 12 }}>Development code: {devCode}</p>}
+                          </>
+                        )
+                      )}
+                      {otpErr && <p style={{ margin: '8px 0 0', fontSize: 13, fontWeight: 600 }}>{otpErr}</p>}
+                    </div>
+                  )}
                   {draft.risk.outcome === 'HOLD' && (
                     <p style={{ margin: 0, fontSize: 13 }}>{t('holdNote')}</p>
                   )}
@@ -297,7 +364,7 @@ export default function Transfer() {
                 <Button variant="outlineDark" style={{ flex: '0 1 130px' }} onClick={() => setStage('form')}>
                   Edit
                 </Button>
-                <Button variant="dark" style={{ flex: '1 1 180px', minWidth: 0 }} onClick={confirmTransfer} disabled={busy || (draft.risk?.outcome === 'WARN' && !ack)}>
+                <Button variant="dark" style={{ flex: '1 1 180px', minWidth: 0 }} onClick={confirmTransfer} disabled={busy || (draft.risk?.outcome === 'WARN' && (!ack || !otpSent || (otpNeeded && otpCode.length !== 6)))}>
                   {busy ? 'Sending…' : draft.risk?.outcome === 'HOLD' ? 'Submit for review' : `Send ${formatMoney(draft.amountValue)}`}
                 </Button>
               </div>

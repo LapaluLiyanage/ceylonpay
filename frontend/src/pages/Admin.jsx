@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppShell } from '../components/AppShell';
-import { getReviews, approveReview, rejectReview, getReports, resolveReport } from '../api/admin';
+import { getReviews, approveReview, rejectReview, getReports, resolveReport, getMules, holdAccount, releaseAccount } from '../api/admin';
 import { ApiError } from '../api/client';
 import { formatMoney } from '../utils/money';
 import { toDisplayPhone, normalizeStoredPhone } from '../utils/phone';
@@ -38,15 +38,17 @@ function who(name, phone) {
 export default function Admin() {
   const [reviews, setReviews] = useState([]);
   const [reports, setReports] = useState([]);
+  const [mules, setMules] = useState([]);
   const [state, setState] = useState('loading');
   const [busyId, setBusyId] = useState(null);
   const [message, setMessage] = useState('');
 
   const load = useCallback(async () => {
     try {
-      const [r, p] = await Promise.all([getReviews(), getReports('OPEN')]);
+      const [r, p, m] = await Promise.all([getReviews(), getReports('OPEN'), getMules(24)]);
       setReviews(r);
       setReports(p);
+      setMules(m);
       setState('ready');
     } catch (err) {
       setState(err instanceof ApiError && (err.status === 403 || err.status === 401) ? 'forbidden' : 'error');
@@ -164,6 +166,42 @@ export default function Admin() {
                       >
                         Dismiss
                       </ActionButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section style={card}>
+              <h2 style={{ margin: '0 0 4px', fontFamily: "'Space Grotesk',sans-serif", fontSize: 21, fontWeight: 500 }}>
+                Suspected mule accounts ({mules.length})
+              </h2>
+              <p style={{ ...small, margin: '0 0 16px' }}>
+                Received from 3 or more people in the last 24 hours, and also pass money on, are new, or have been reported.
+                Holding an account stops it sending money; it can still receive.
+              </p>
+              {mules.length === 0 && <p style={small}>Nobody looks suspicious right now.</p>}
+              <div style={{ display: 'grid', gap: 10 }}>
+                {mules.map((m) => (
+                  <div key={m.userId} style={item}>
+                    <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600 }}>{who(m.name, m.phone)}</p>
+                    <p style={small}>
+                      {m.senders} senders · received {formatMoney(m.received)} · sent on {formatMoney(m.sentOn)}
+                      {m.accountAgeDays >= 0 ? ` · account ${m.accountAgeDays} days old` : ''}
+                      <br />
+                      {m.flags.join(' · ')}
+                      {m.onHold ? ' · ON HOLD' : ''}
+                    </p>
+                    <div style={{ marginTop: 12 }}>
+                      {m.onHold ? (
+                        <ActionButton disabled={busyId === m.userId} onClick={() => act(m.userId, () => releaseAccount(m.userId), 'Hold lifted.')}>
+                          Release hold
+                        </ActionButton>
+                      ) : (
+                        <ActionButton tone="primary" disabled={busyId === m.userId} onClick={() => act(m.userId, () => holdAccount(m.userId), 'Account put on hold.')}>
+                          Hold account
+                        </ActionButton>
+                      )}
                     </div>
                   </div>
                 ))}

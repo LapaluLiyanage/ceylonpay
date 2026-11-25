@@ -60,6 +60,11 @@ public class SafetyService {
     }
 
     @Transactional(readOnly = true)
+    public boolean isReviewHeld(String userId) {
+        return settingsRepository.findById(userId).map(SafetySettings::isReviewHold).orElse(false);
+    }
+
+    @Transactional(readOnly = true)
     public boolean isFrozen(String userId) {
         return settingsRepository.findById(userId).map(SafetySettings::isFrozen).orElse(false);
     }

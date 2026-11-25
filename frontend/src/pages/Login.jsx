@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../api/client';
 import { digitsOnly, groupPhone, phoneError } from '../utils/phone';
@@ -11,6 +11,7 @@ import { AuthSplitLayout } from '../components/AuthSplitLayout';
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -36,7 +37,9 @@ export default function Login() {
     setBusy(true);
     try {
       await login({ phone: digitsOnly(phone), password });
-      navigate('/dashboard');
+      // Return to where the person was headed (for example a scanned pay link), but only inside this app.
+      const from = location.state?.from;
+      navigate(typeof from === 'string' && /^\/(?!\/)/.test(from) ? from : '/dashboard');
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setAuthError('Wrong phone number or password. Try again.');

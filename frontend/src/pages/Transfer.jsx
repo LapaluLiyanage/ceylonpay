@@ -12,6 +12,8 @@ import { formatMoney, parseAmountInput } from '../utils/money';
 import { digitsOnly, groupPhone, phoneError, toApiPhone, toDisplayPhone } from '../utils/phone';
 import { Button } from '../components/Button';
 import { FieldLabel, FieldError, PhoneField } from '../components/FormFields';
+import { QrScanner, canScanQr } from '../components/QrScanner';
+import { parsePayLink } from '../utils/payLink';
 
 const FAIL_COPY = {
   network: { title: "Transfer didn't go through", label: 'Try again' },
@@ -25,8 +27,11 @@ export default function Transfer() {
   const { lang, t } = useLanguage();
   const [balance, setBalance] = useState(0);
   const [balanceError, setBalanceError] = useState(false);
-  const [phone, setPhone] = useState('');
-  const [amount, setAmount] = useState('');
+  // A pay link (from a QR code) opens this page with the number and maybe the amount filled in.
+  const [linked] = useState(() => parsePayLink(`${window.location.origin}/transfer${window.location.search}`));
+  const [phone, setPhone] = useState(linked?.phone || '');
+  const [amount, setAmount] = useState(linked?.amount || '');
+  const [scanning, setScanning] = useState(false);
   const [phoneErr, setPhoneErr] = useState('');
   const [amountErr, setAmountErr] = useState('');
   const [stage, setStage] = useState('form');
@@ -48,6 +53,18 @@ export default function Transfer() {
       .then((data) => setBalance(data.balance))
       .catch(() => setBalanceError(true));
   }, []);
+
+  function handleScan(text) {
+    setScanning(false);
+    const found = parsePayLink(text);
+    if (!found) {
+      setPhoneErr("That code isn't a CeylonPay payment code.");
+      return;
+    }
+    setPhone(found.phone);
+    if (found.amount) setAmount(found.amount);
+    setPhoneErr('');
+  }
 
   function resetOtp() {
     setOtpSent(false);
@@ -183,6 +200,16 @@ export default function Transfer() {
                   height={56}
                 />
                 <FieldError>{phoneErr}</FieldError>
+                {canScanQr() && !scanning && (
+                  <button
+                    type="button"
+                    onClick={() => setScanning(true)}
+                    style={{ marginTop: 10, padding: '8px 12px', borderRadius: 10, background: 'rgba(255,255,255,.08)', color: '#f2f4ef', fontSize: 13 }}
+                  >
+                    Scan a QR code
+                  </button>
+                )}
+                {scanning && <QrScanner onResult={handleScan} onClose={() => setScanning(false)} />}
 
                 <div style={{ marginTop: 20 }}>
                   <FieldLabel>Amount</FieldLabel>

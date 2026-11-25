@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the CeylonPay React frontend (Register, Login, Dashboard, Deposit, Transfer, History) wired to the existing Spring Boot backend, matching the "CeylonPay payment prototype" Claude Design artifact exactly for visuals and copy.
+**Goal:** Build the CeylonPay React frontend (Register, Login, Dashboard, Deposit, Transfer, History) wired to the existing Spring Boot backend, matching the "CeylonPay payment prototype" design artifact exactly for visuals and copy.
 
 **Architecture:** Two small backend additions first (a `GET /api/transactions` endpoint and CORS config), then a Vite + React + React Router + Context API frontend at `frontend/` in the repo root. Every screen calls thin `api/*.js` wrapper functions — never a raw `fetch()` in a component. State lives in `AuthContext` (token/user) and per-page `useState` (form/stage state) — no global state library.
 

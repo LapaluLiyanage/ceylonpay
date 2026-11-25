@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build the CeylonPay web frontend (Vite + React + React Router + Context API) against the existing, fully-tested Spring Boot backend (Parts 1–5), matching the "CeylonPay payment prototype" Claude Design artifact exactly for visuals and copy. This spec is the source of truth for structure, data flow, and API wiring; the prototype (read and extracted in full below) is the source of truth for every visual and copy detail.
+Build the CeylonPay web frontend (Vite + React + React Router + Context API) against the existing, fully-tested Spring Boot backend (Parts 1–5), matching the "CeylonPay payment prototype" design artifact exactly for visuals and copy. This spec is the source of truth for structure, data flow, and API wiring; the prototype (read and extracted in full below) is the source of truth for every visual and copy detail.
 
 ## Backend additions required
 
@@ -66,7 +66,7 @@ No component makes a raw `fetch()` call — every screen calls a function from `
 - Fonts: `Space Grotesk` (headings/numbers/phone digits), `Manrope` (body), loaded via `@font-face` (self-hosted per the prototype, or Google Fonts equivalent — same two families).
 - Base: `body{background:#0b0c0b;color:#f2f4ef;font-family:Manrope,system-ui,sans-serif}`. Links `#c9f24d`, hover `#dcff7a`.
 - Two animations: `cp-pulse` (loading skeletons: opacity .28↔.7, 1.4s ease-in-out infinite) and `cp-rise` (screen entrance: translateY(10px)+opacity 0 → none+1, .3–.4s ease).
-- Full color and copy inventory: see the extracted prototype markup (read in full during brainstorming; the implementer should re-read the artifact at `https://claude.ai/code/artifact/ca35c87f-776f-42f2-b479-977fc0d7ab1a` directly — decode its `__bundler/template` script as a JSON string to get the literal HTML/CSS/copy for every screen and state).
+- Full color and copy inventory: see the extracted prototype markup (read in full during brainstorming; the implementer should re-read the design artifact directly — decode its `__bundler/template` script as a JSON string to get the literal HTML/CSS/copy for every screen and state).
 
 ## Per-screen behavior summary
 
@@ -99,5 +99,5 @@ No component makes a raw `fetch()` call — every screen calls a function from `
 - All 6 manual verification steps pass
 - No screen makes a raw `fetch()` call directly inside a component
 - The transfer confirmation step cannot be bypassed
-- Visual details match the Claude Design file, not an ad-hoc interpretation
+- Visual details match the design file, not an ad-hoc interpretation
 - Can explain why the JWT is checked on app load instead of trusting `localStorage`

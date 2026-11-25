@@ -4,6 +4,7 @@ import { AppShell } from '../components/AppShell';
 import { timestampLabel } from '../components/Activity';
 import { getBalance } from '../api/wallet';
 import { transfer } from '../api/transfer';
+import { lookupUser } from '../api/users';
 import { ApiError } from '../api/client';
 import { formatMoney, parseAmountInput } from '../utils/money';
 import { digitsOnly, groupPhone, phoneError, toApiPhone, toDisplayPhone } from '../utils/phone';
@@ -13,6 +14,7 @@ import { FieldLabel, FieldError, PhoneField } from '../components/FormFields';
 const FAIL_COPY = {
   network: { title: "Transfer didn't go through", label: 'Try again' },
   notfound: { title: 'No wallet on that number', label: 'Change the number' },
+  blocked: { title: 'Blocked by your safety settings', label: 'Open Safety' },
   balance: { title: 'Not enough balance', label: 'Deposit money' },
 };
 
@@ -29,6 +31,8 @@ export default function Transfer() {
   const [busy, setBusy] = useState(false);
   const [failKind, setFailKind] = useState(null);
   const [result, setResult] = useState(null);
+  const [blockedMessage, setBlockedMessage] = useState('');
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     getBalance()
@@ -36,8 +40,9 @@ export default function Transfer() {
       .catch(() => setBalanceError(true));
   }, []);
 
-  function reviewTransfer(e) {
+  async function reviewTransfer(e) {
     e.preventDefault();
+    if (checking) return;
     const pe = phoneError(phone);
     const parsed = parseAmountInput(amount);
     if (pe || parsed.error) {
@@ -47,8 +52,21 @@ export default function Transfer() {
     }
     setPhoneErr('');
     setAmountErr('');
-    setDraft({ phoneDigits: phone, amountValue: parsed.value });
-    setStage('confirm');
+    setChecking(true);
+    try {
+      // Name check: show who owns this number before any money moves.
+      const owner = await lookupUser(toApiPhone(phone));
+      setDraft({ phoneDigits: phone, amountValue: parsed.value, recipientName: owner.name });
+      setStage('confirm');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        setPhoneErr('Nobody on CeylonPay has this number. Check it and try again.');
+      } else {
+        setPhoneErr("Couldn't check that number. Try again in a moment.");
+      }
+    } finally {
+      setChecking(false);
+    }
   }
 
   async function confirmTransfer() {
@@ -60,7 +78,10 @@ export default function Transfer() {
       setBalance(data.newBalance);
       setStage('sent');
     } catch (err) {
-      if (err instanceof ApiError && err.status === 404) setFailKind('notfound');
+      if (err instanceof ApiError && err.status === 403) {
+        setBlockedMessage(err.message);
+        setFailKind('blocked');
+      } else if (err instanceof ApiError && err.status === 404) setFailKind('notfound');
       else if (err instanceof ApiError && err.status === 400) setFailKind('balance');
       else setFailKind('network');
       setStage('failed');
@@ -72,7 +93,9 @@ export default function Transfer() {
   const balanceAfter = draft ? balance - draft.amountValue : balance;
   const fail = failKind ? FAIL_COPY[failKind] : null;
   const failBody =
-    failKind === 'notfound'
+    failKind === 'blocked'
+      ? blockedMessage
+      : failKind === 'notfound'
       ? `${toDisplayPhone(draft?.phoneDigits)} isn't registered with CeylonPay. Check the number, or ask them to sign up first.`
       : failKind === 'balance'
         ? `You need ${formatMoney((draft?.amountValue || 0) - balance)} more to send ${formatMoney(draft?.amountValue || 0)}. Deposit first, then send.`
@@ -80,6 +103,7 @@ export default function Transfer() {
 
   function failPrimaryAction() {
     if (failKind === 'balance') navigate('/deposit');
+    else if (failKind === 'blocked') navigate('/safety');
     else if (failKind === 'notfound') setStage('form');
     else confirmTransfer();
   }
@@ -163,8 +187,8 @@ export default function Transfer() {
                   <Button type="button" variant="outlineLight" style={{ flex: '0 1 120px' }} onClick={() => navigate('/dashboard')}>
                     Cancel
                   </Button>
-                  <Button type="submit" variant="primary" style={{ flex: '1 1 180px', minWidth: 0 }} disabled={balanceError}>
-                    Review transfer
+                  <Button type="submit" variant="primary" style={{ flex: '1 1 180px', minWidth: 0 }} disabled={balanceError || checking}>
+                    {checking ? 'Checking number…' : 'Review transfer'}
                   </Button>
                 </div>
               </form>
@@ -192,6 +216,10 @@ export default function Transfer() {
 
               <div style={{ borderRadius: 16, background: '#fff', overflow: 'hidden', marginBottom: 18 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: 16, borderBottom: '1px solid rgba(20,23,15,.08)' }}>
+                  <span style={{ fontSize: 13, color: 'rgba(20,23,15,.55)' }}>Paying</span>
+                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 600 }}>{draft.recipientName}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: 16, borderBottom: '1px solid rgba(20,23,15,.08)' }}>
                   <span style={{ fontSize: 13, color: 'rgba(20,23,15,.55)' }}>Phone</span>
                   <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 500 }}>{toDisplayPhone(draft.phoneDigits)}</span>
                 </div>
@@ -208,7 +236,7 @@ export default function Transfer() {
               <div style={{ display: 'flex', gap: 10, padding: 14, borderRadius: 12, background: '#f6edd3', border: '1px solid rgba(190,150,40,.3)', marginBottom: 22 }}>
                 <span style={{ color: '#8a6a12', fontWeight: 700, lineHeight: 1.4 }}>!</span>
                 <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: '#6b530c' }}>
-                  Once sent, this transfer can&apos;t be reversed. Check the number belongs to the person you mean to pay.
+                  Once sent, this transfer can&apos;t be reversed. Check the name above is the person you mean to pay.
                 </p>
               </div>
 
@@ -245,7 +273,7 @@ export default function Transfer() {
                 Sent {formatMoney(result.amount)}
               </h2>
               <p style={{ margin: '0 0 24px', fontSize: 14, color: 'rgba(20,23,15,.6)' }}>
-                to {toDisplayPhone(draft.phoneDigits)} ·{' '}
+                to {draft.recipientName} · {toDisplayPhone(draft.phoneDigits)} ·{' '}
                 {timestampLabel(result.timestamp)}
               </p>
               <div style={{ borderRadius: 16, background: '#fff', overflow: 'hidden', textAlign: 'left', marginBottom: 24 }}>

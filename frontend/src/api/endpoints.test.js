@@ -51,3 +51,22 @@ describe('transfer API', () => {
     expect(request).toHaveBeenCalledWith('/api/transactions');
   });
 });
+
+describe('name check and safety API', () => {
+  it('lookupUser gets /api/users/lookup with the encoded phone', async () => {
+    const { lookupUser } = await import('./users');
+    await lookupUser('+94771234567');
+    expect(request).toHaveBeenCalledWith('/api/users/lookup?phone=%2B94771234567');
+  });
+
+  it('getSafety gets /api/safety and updateSafety puts the settings', async () => {
+    const { getSafety, updateSafety } = await import('./safety');
+    await getSafety();
+    expect(request).toHaveBeenCalledWith('/api/safety');
+    await updateSafety({ frozen: true, dailyLimit: 5000, nightLimit: null });
+    expect(request).toHaveBeenCalledWith('/api/safety', {
+      method: 'PUT',
+      body: { frozen: true, dailyLimit: 5000, nightLimit: null },
+    });
+  });
+});

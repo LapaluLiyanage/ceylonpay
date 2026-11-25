@@ -10,6 +10,7 @@ import Transfer from './pages/Transfer';
 import History from './pages/History';
 import Safety from './pages/Safety';
 import Admin from './pages/Admin';
+import VerifyPhone from './pages/VerifyPhone';
 
 export default function App() {
   return (
@@ -64,6 +65,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Admin />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/verify"
+            element={
+              <ProtectedRoute>
+                <VerifyPhone />
               </ProtectedRoute>
             }
           />

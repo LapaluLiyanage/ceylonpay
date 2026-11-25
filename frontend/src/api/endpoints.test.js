@@ -129,3 +129,29 @@ describe('mule admin API', () => {
     expect(request).toHaveBeenCalledWith('/api/admin/mules/u1/release', { method: 'POST' });
   });
 });
+
+describe('one-time code API', () => {
+  it('phone verification calls the account endpoints', async () => {
+    const { requestPhoneCode, verifyPhone } = await import('./account');
+    await requestPhoneCode();
+    expect(request).toHaveBeenCalledWith('/api/account/phone/request', { method: 'POST' });
+    await verifyPhone('123456');
+    expect(request).toHaveBeenCalledWith('/api/account/phone/verify', { method: 'POST', body: { code: '123456' } });
+  });
+
+  it('transfer sends the code only together with an acknowledged warning', async () => {
+    await transfer('+94799999998', 200, true, '123456');
+    expect(request).toHaveBeenCalledWith('/api/transfer', {
+      method: 'POST',
+      body: { toPhone: '+94799999998', amount: 200, acknowledgeRisk: true, otpCode: '123456' },
+    });
+    await transfer('+94799999998', 200, false, '123456');
+    expect(request).toHaveBeenLastCalledWith('/api/transfer', { method: 'POST', body: { toPhone: '+94799999998', amount: 200 } });
+  });
+
+  it('requestTransferCode posts the recipient and amount', async () => {
+    const { requestTransferCode } = await import('./transfer');
+    await requestTransferCode('+94799999998', 200);
+    expect(request).toHaveBeenCalledWith('/api/transfer/otp', { method: 'POST', body: { toPhone: '+94799999998', amount: 200 } });
+  });
+});

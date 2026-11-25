@@ -165,4 +165,17 @@ describe('request', () => {
       expect(refreshCalls).toHaveLength(1);
     });
   });
+
+  it('exposes the error code from the response body', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => '{"error":"That code is not correct.","code":"INVALID_OTP"}',
+    });
+
+    await expect(request('/api/transfer', { method: 'POST', body: {} })).rejects.toMatchObject({
+      status: 400,
+      code: 'INVALID_OTP',
+    });
+  });
 });

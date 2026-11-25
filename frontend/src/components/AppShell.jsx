@@ -127,6 +127,26 @@ export function AppShell({ children }) {
             </button>
           </div>
         </header>
+        {user?.phoneVerified === false && location.pathname !== '/verify' && (
+          <button
+            onClick={() => navigate('/verify')}
+            style={{
+              display: 'block',
+              width: '100%',
+              marginTop: 14,
+              padding: '12px 16px',
+              borderRadius: 14,
+              textAlign: 'left',
+              fontSize: 13,
+              fontWeight: 600,
+              background: '#f6edd3',
+              color: '#6b530c',
+              border: '1px solid rgba(190,150,40,.3)',
+            }}
+          >
+            Verify your phone number to send money →
+          </button>
+        )}
         {children}
       </div>
     </div>

@@ -17,7 +17,10 @@ public record TransferRequest(
 
         /** Set by the client after the sender has seen and accepted a risk warning. */
         /** Optional; absent means false. */
-        Boolean acknowledgeRisk
+        Boolean acknowledgeRisk,
+
+        /** The 6-digit code texted to the sender; needed only when the transfer carries a risk warning. */
+        String otpCode
 
 ) {
 }

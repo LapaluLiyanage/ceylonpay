@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { login as apiLogin, register as apiRegister } from '../api/auth';
+import { login as apiLogin, register as apiRegister, logout as apiLogout } from '../api/auth';
 import { getBalance } from '../api/wallet';
-import { setAuthToken, setUnauthorizedHandler, ApiError } from '../api/client';
+import { setAuthToken, setRefreshToken, setUnauthorizedHandler, setTokensRefreshedHandler, ApiError } from '../api/client';
 import { toApiPhone } from '../utils/phone';
 
 const AuthContext = createContext(null);
 
 const TOKEN_KEY = 'ceylonpay_token';
 const USER_KEY = 'ceylonpay_user';
+const REFRESH_KEY = 'ceylonpay_refresh';
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
@@ -22,10 +23,12 @@ export function AuthProvider({ children }) {
   });
   const [isReady, setIsReady] = useState(false);
 
-  const persistSession = useCallback((newToken, newUser) => {
+  const persistSession = useCallback((newToken, newUser, newRefreshToken) => {
     localStorage.setItem(TOKEN_KEY, newToken);
     localStorage.setItem(USER_KEY, JSON.stringify(newUser));
+    if (newRefreshToken) localStorage.setItem(REFRESH_KEY, newRefreshToken);
     setAuthToken(newToken);
+    setRefreshToken(newRefreshToken || null);
     setToken(newToken);
     setUser(newUser);
   }, []);
@@ -33,13 +36,21 @@ export function AuthProvider({ children }) {
   const clearSession = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(REFRESH_KEY);
     setAuthToken(null);
+    setRefreshToken(null);
     setToken(null);
     setUser(null);
   }, []);
 
   useEffect(() => {
     setUnauthorizedHandler(clearSession);
+    // A silent refresh hands us a new pair; keep storage and state in step with it.
+    setTokensRefreshedHandler(({ token: newToken, refreshToken: newRefresh }) => {
+      localStorage.setItem(TOKEN_KEY, newToken);
+      localStorage.setItem(REFRESH_KEY, newRefresh);
+      setToken(newToken);
+    });
   }, [clearSession]);
 
   useEffect(() => {
@@ -49,6 +60,7 @@ export function AuthProvider({ children }) {
       return;
     }
     setAuthToken(existingToken);
+    setRefreshToken(localStorage.getItem(REFRESH_KEY));
     getBalance()
       .then(() => setIsReady(true))
       .catch((err) => {
@@ -62,17 +74,20 @@ export function AuthProvider({ children }) {
 
   async function login({ phone, password }) {
     const data = await apiLogin({ phone: toApiPhone(phone), password });
-    persistSession(data.token, { id: data.userId, name: data.name, phone, role: data.role });
+    persistSession(data.token, { id: data.userId, name: data.name, phone, role: data.role }, data.refreshToken);
     return data;
   }
 
   async function register({ name, phone, nic, password }) {
     const data = await apiRegister({ name, phone: toApiPhone(phone), nic, password });
-    persistSession(data.token, { id: data.userId, name: data.name, phone, role: data.role });
+    persistSession(data.token, { id: data.userId, name: data.name, phone, role: data.role }, data.refreshToken);
     return data;
   }
 
   function logout() {
+    // End the session on the server too; the local sign-out must not wait on (or fail because of) the network.
+    const existingRefresh = localStorage.getItem(REFRESH_KEY);
+    if (existingRefresh) apiLogout(existingRefresh).catch(() => {});
     clearSession();
   }
 

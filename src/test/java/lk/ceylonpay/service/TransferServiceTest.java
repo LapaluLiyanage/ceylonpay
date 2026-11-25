@@ -50,6 +50,9 @@ class TransferServiceTest {
     private LedgerService ledgerService;
 
     @Mock
+    private SafetyService safetyService;
+
+    @Mock
     private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @InjectMocks

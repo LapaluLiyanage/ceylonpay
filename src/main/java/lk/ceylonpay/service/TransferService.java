@@ -41,13 +41,14 @@ public class TransferService {
     private final AuditLogRepository auditLogRepository;
     private final OutboxEventRepository outboxEventRepository;
     private final LedgerService ledgerService;
+    private final SafetyService safetyService;
     private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
     private final TransferService self;
 
     public TransferService(UserRepository userRepository, WalletRepository walletRepository,
                             TransactionRepository transactionRepository, AuditLogRepository auditLogRepository,
-                            OutboxEventRepository outboxEventRepository, LedgerService ledgerService,
+                            OutboxEventRepository outboxEventRepository, LedgerService ledgerService, SafetyService safetyService,
                             IdempotencyService idempotencyService, ObjectMapper objectMapper,
                             @Lazy TransferService self) {
         this.userRepository = userRepository;
@@ -56,6 +57,7 @@ public class TransferService {
         this.auditLogRepository = auditLogRepository;
         this.outboxEventRepository = outboxEventRepository;
         this.ledgerService = ledgerService;
+        this.safetyService = safetyService;
         this.idempotencyService = idempotencyService;
         this.objectMapper = objectMapper;
         // Self-injected Spring proxy: transferIdempotent() below must call transfer() through
@@ -123,6 +125,7 @@ public class TransferService {
         if (senderWallet.getId().equals(recipientWallet.getId())) {
             throw new InvalidTransferException("Cannot transfer to your own wallet");
         }
+        safetyService.checkOutgoing(senderUserId, senderWallet.getId(), amount);
         if (senderWallet.getBalance().compareTo(amount) < 0) {
             throw new InsufficientBalanceException("Insufficient balance");
         }

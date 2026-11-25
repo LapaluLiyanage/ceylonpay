@@ -1,7 +1,8 @@
 import { C, Logo, LogoMark, Pill, display } from './ui';
+import { Hero3D } from './Hero3D';
 import { useMedia, DESKTOP_QUERY } from './useMedia';
 
-function Float({ children, style, knobFirst }) {
+export function Float({ children, style, knobFirst }) {
   const knob = (
     <span style={{ width: 34, height: 34, borderRadius: '50%', background: C.grad, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 14, border: '2px solid #fff' }}>↗</span>
   );
@@ -38,6 +39,7 @@ function ScoreExplainer() {
 function DesktopHero() {
   return (
     <div style={{ position: 'relative', flex: 1.3, margin: '16px 0 16px 16px', borderRadius: 32, overflow: 'hidden', background: 'radial-gradient(120% 90% at 50% 35%, #6E4534 0%, #3A2419 58%, #1C130E 100%)' }}>
+      <Hero3D rotation={-0.35} offsetY={1.1} />
       <div style={{ position: 'absolute', left: 32, top: 28, zIndex: 3 }}>
         <Logo size={30} fontSize={15} />
       </div>
@@ -61,6 +63,7 @@ function DesktopHero() {
 function MobileHero({ height, label }) {
   return (
     <div style={{ position: 'relative', height, borderRadius: 26, overflow: 'hidden', background: 'radial-gradient(120% 90% at 50% 30%, #6E4534 0%, #2E1C14 75%)' }}>
+      <Hero3D rotation={-0.35} />
       <div style={{ position: 'absolute', left: 14, bottom: 14, zIndex: 3, background: C.surface, borderRadius: 999, padding: '8px 13px', fontSize: 12.5, fontWeight: 500 }}>{label}</div>
     </div>
   );

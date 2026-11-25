@@ -27,6 +27,10 @@ public class SafetySettings {
     @Column(nullable = false)
     private boolean frozen;
 
+    /** Set by the system while a scam report against this account is open. The user cannot change it. */
+    @Column(name = "review_hold", nullable = false)
+    private boolean reviewHold;
+
     @Column(name = "daily_limit", precision = 19, scale = 4)
     private BigDecimal dailyLimit;
 

@@ -8,6 +8,7 @@ import Deposit from './pages/Deposit';
 import Transfer from './pages/Transfer';
 import History from './pages/History';
 import Safety from './pages/Safety';
+import Admin from './pages/Admin';
 
 export default function App() {
   return (
@@ -53,6 +54,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Safety />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <Admin />
               </ProtectedRoute>
             }
           />

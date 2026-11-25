@@ -112,6 +112,8 @@ cd frontend && npm test   # frontend — Vitest
 - **My Safety** — freeze your wallet, or set your own daily and night (22:00–06:00) limits.
 - **Scam Shield** — every transfer gets a 0–100 risk score from transparent rules (first payment to this number, much larger than usual, almost all of your balance, brand-new receiving account, receiver collecting from many people, and more). Below 40 it goes through, 40–74 the sender must confirm the warnings, 75+ the transfer is **held**: no money moves until an admin approves it (`/api/admin/reviews`) or the sender cancels it. Rules live in `risk/RiskService.java`.
 
+- **Report and recover** — a sender can press *Report scam* on a completed transfer. The receiving account's outgoing money is put on hold immediately (the user can't lift it). A reviewer on the **Review** page (admins only) either upholds the report, which pulls back what the receiver still has as a new ledger counter-transfer (history is never edited) and flags the account in future risk scores, or dismisses it and lifts the hold.
+
 ## Admin access
 
 `/api/admin/**` requires the `ADMIN` role (carried as a claim in the JWT). Nobody can become an admin through the API. Register the account first, then set `CEYLONPAY_ADMIN_PHONE` to its phone number and restart; the account is promoted at startup.

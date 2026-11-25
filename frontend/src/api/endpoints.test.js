@@ -95,3 +95,25 @@ describe('scam check API', () => {
     expect(request).toHaveBeenCalledWith('/api/transfer/abc/cancel', { method: 'POST' });
   });
 });
+
+describe('report and admin API', () => {
+  it('reportTransfer posts the note to the report path', async () => {
+    const { reportTransfer } = await import('./transfer');
+    await reportTransfer('abc', 'fake job');
+    expect(request).toHaveBeenCalledWith('/api/transfer/abc/report', { method: 'POST', body: { note: 'fake job' } });
+  });
+
+  it('admin calls hit the review and report endpoints', async () => {
+    const admin = await import('./admin');
+    await admin.getReviews();
+    expect(request).toHaveBeenCalledWith('/api/admin/reviews');
+    await admin.approveReview('r1');
+    expect(request).toHaveBeenCalledWith('/api/admin/reviews/r1/approve', { method: 'POST' });
+    await admin.rejectReview('r1');
+    expect(request).toHaveBeenCalledWith('/api/admin/reviews/r1/reject', { method: 'POST' });
+    await admin.getReports();
+    expect(request).toHaveBeenCalledWith('/api/admin/reports?status=OPEN');
+    await admin.resolveReport('p1', 'UPHOLD');
+    expect(request).toHaveBeenCalledWith('/api/admin/reports/p1/resolve', { method: 'POST', body: { decision: 'UPHOLD' } });
+  });
+});

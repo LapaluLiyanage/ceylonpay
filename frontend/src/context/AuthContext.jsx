@@ -62,13 +62,13 @@ export function AuthProvider({ children }) {
 
   async function login({ phone, password }) {
     const data = await apiLogin({ phone: toApiPhone(phone), password });
-    persistSession(data.token, { id: data.userId, name: data.name, phone });
+    persistSession(data.token, { id: data.userId, name: data.name, phone, role: data.role });
     return data;
   }
 
   async function register({ name, phone, nic, password }) {
     const data = await apiRegister({ name, phone: toApiPhone(phone), nic, password });
-    persistSession(data.token, { id: data.userId, name: data.name, phone });
+    persistSession(data.token, { id: data.userId, name: data.name, phone, role: data.role });
     return data;
   }
 

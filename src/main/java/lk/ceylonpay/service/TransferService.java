@@ -227,7 +227,9 @@ public class TransferService {
                 .stream()
                 // The receiver only sees a transfer once money has actually arrived.
                 .filter(txn -> txn.getSender().getId().equals(myWallet.getId())
-                        || TransactionStatus.SUCCESS.equals(txn.getStatus()))
+                        || TransactionStatus.SUCCESS.equals(txn.getStatus())
+                        || TransactionStatus.REVERSED.equals(txn.getStatus())
+                        || TransactionStatus.REVERSAL.equals(txn.getStatus()))
                 .map(txn -> toHistoryResponse(txn, myWallet.getId()))
                 .toList();
     }

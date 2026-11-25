@@ -20,6 +20,8 @@ import lk.ceylonpay.repository.OutboxEventRepository;
 import lk.ceylonpay.repository.TransactionRepository;
 import lk.ceylonpay.repository.UserRepository;
 import lk.ceylonpay.repository.WalletRepository;
+import lk.ceylonpay.dto.OtpSentResponse;
+import lk.ceylonpay.entity.OtpPurpose;
 import lk.ceylonpay.risk.RiskAssessment;
 import lk.ceylonpay.risk.RiskOutcome;
 import lk.ceylonpay.risk.RiskService;
@@ -48,13 +50,14 @@ public class TransferService {
     private final LedgerService ledgerService;
     private final SafetyService safetyService;
     private final RiskService riskService;
+    private final OtpService otpService;
     private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
     private final TransferService self;
 
     public TransferService(UserRepository userRepository, WalletRepository walletRepository,
                             TransactionRepository transactionRepository, AuditLogRepository auditLogRepository,
-                            OutboxEventRepository outboxEventRepository, LedgerService ledgerService, SafetyService safetyService, RiskService riskService,
+                            OutboxEventRepository outboxEventRepository, LedgerService ledgerService, SafetyService safetyService, RiskService riskService, OtpService otpService,
                             IdempotencyService idempotencyService, ObjectMapper objectMapper,
                             @Lazy TransferService self) {
         this.userRepository = userRepository;
@@ -65,6 +68,7 @@ public class TransferService {
         this.ledgerService = ledgerService;
         this.safetyService = safetyService;
         this.riskService = riskService;
+        this.otpService = otpService;
         this.idempotencyService = idempotencyService;
         this.objectMapper = objectMapper;
         // Self-injected Spring proxy: transferIdempotent() below must call transfer() through
@@ -81,7 +85,7 @@ public class TransferService {
      */
     public TransactionResponse transferIdempotent(String idempotencyKey, String senderUserId,
                                                    String rawToPhone, BigDecimal amount,
-                                                   boolean acknowledgeRisk) {
+                                                   boolean acknowledgeRisk, String otpCode) {
         String toPhone = normalizeRecipient(rawToPhone);
         String requestHash = IdempotencyService.hash(senderUserId + "|" + toPhone + "|" + amount);
         Optional<IdempotencyKey> existing = idempotencyService.begin(idempotencyKey, senderUserId, requestHash);
@@ -99,7 +103,7 @@ public class TransferService {
         try {
             // Call through the injected proxy (`self`), not a bare `transfer(...)`, so
             // @Transactional and @Retryable on transfer() actually take effect here.
-            TransactionResponse response = self.transfer(senderUserId, toPhone, amount, acknowledgeRisk);
+            TransactionResponse response = self.transfer(senderUserId, toPhone, amount, acknowledgeRisk, otpCode);
             idempotencyService.complete(idempotencyKey, 200, writeJson(response));
             return response;
         } catch (RuntimeException e) {
@@ -121,7 +125,7 @@ public class TransferService {
     )
     @Transactional
     public TransactionResponse transfer(String senderUserId, String rawToPhone, BigDecimal amount,
-                                         boolean acknowledgeRisk) {
+                                         boolean acknowledgeRisk, String otpCode) {
         String toPhone = normalizeRecipient(rawToPhone);
         Wallet senderWallet = walletRepository.findByUserId(senderUserId)
                 .orElseThrow(() -> new WalletNotFoundException("Sender wallet not found"));
@@ -134,6 +138,7 @@ public class TransferService {
         if (senderWallet.getId().equals(recipientWallet.getId())) {
             throw new InvalidTransferException("Cannot transfer to your own wallet");
         }
+        otpService.requireVerifiedPhone(senderWallet.getUser());
         safetyService.checkOutgoing(senderUserId, senderWallet.getId(), amount);
         if (senderWallet.getBalance().compareTo(amount) < 0) {
             throw new InsufficientBalanceException("Insufficient balance");
@@ -143,8 +148,13 @@ public class TransferService {
         if (risk.outcome() == RiskOutcome.HOLD) {
             return holdForReview(senderWallet, recipientWallet, toPhone, amount, risk);
         }
-        if (risk.outcome() == RiskOutcome.WARN && !acknowledgeRisk) {
-            throw new RiskWarningException(risk);
+        if (risk.outcome() == RiskOutcome.WARN) {
+            if (!acknowledgeRisk) {
+                throw new RiskWarningException(risk);
+            }
+            // Second factor for a transfer the system itself doubted: a code texted to the sender's own phone.
+            otpService.verify(senderWallet.getUser(), OtpPurpose.TRANSFER, otpCode,
+                    OtpService.transferContext(toPhone, amount));
         }
 
         // Cached balance columns are updated here; @Version on Wallet is what makes this
@@ -188,6 +198,16 @@ public class TransferService {
                 txn.getCreatedAt(), TransactionStatus.PENDING_REVIEW, risk.reasons());
         outboxEventRepository.save(new OutboxEvent("Transaction", txn.getId(), "transfer.held", writeJson(response)));
         return response;
+    }
+
+    /** Texts the sender a code for one specific transfer; the code is useless for any other recipient or amount. */
+    @Transactional
+    public OtpSentResponse requestTransferCode(String senderUserId, String rawToPhone, BigDecimal amount) {
+        String toPhone = normalizeRecipient(rawToPhone);
+        User sender = userRepository.findById(senderUserId)
+                .orElseThrow(() -> new WalletNotFoundException("Sender wallet not found"));
+        otpService.requireVerifiedPhone(sender);
+        return otpService.send(sender, OtpPurpose.TRANSFER, OtpService.transferContext(toPhone, amount));
     }
 
     /** Scores a transfer without doing it, so the app can show warnings before the sender confirms. */

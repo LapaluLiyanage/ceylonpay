@@ -41,6 +41,10 @@ public class User {
     @Column(nullable = false)
     private String role = "USER";
 
+    /** True once the user has entered the code texted to this number. Existing accounts were grandfathered in. */
+    @Column(name = "phone_verified", nullable = false)
+    private boolean phoneVerified;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

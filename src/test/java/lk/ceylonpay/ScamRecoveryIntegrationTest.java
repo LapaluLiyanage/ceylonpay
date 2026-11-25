@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Report a scam, freeze the receiver, then recover (fully or partly) or dismiss. */
-@SpringBootTest(properties = "ceylonpay.rate-limit.enabled=false")
+@SpringBootTest(properties = {"ceylonpay.rate-limit.enabled=false", "ceylonpay.otp.enabled=false"})
 @AutoConfigureMockMvc
 class ScamRecoveryIntegrationTest {
 

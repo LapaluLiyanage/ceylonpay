@@ -3,7 +3,9 @@ package lk.ceylonpay.config;
 import lk.ceylonpay.exception.IdempotencyConflictException;
 import lk.ceylonpay.exception.InsufficientBalanceException;
 import lk.ceylonpay.exception.InvalidCredentialsException;
+import lk.ceylonpay.exception.InvalidOtpException;
 import lk.ceylonpay.exception.InvalidTransferException;
+import lk.ceylonpay.exception.OtpRequiredException;
 import lk.ceylonpay.exception.RiskWarningException;
 import lk.ceylonpay.exception.TransferBlockedException;
 import lk.ceylonpay.exception.UserAlreadyExistsException;
@@ -57,6 +59,18 @@ public class GlobalExceptionHandler {
                 "outcome", e.getAssessment().outcome().name(),
                 "score", e.getAssessment().score(),
                 "reasons", e.getAssessment().reasons()));
+    }
+
+    @ExceptionHandler(InvalidOtpException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidOtp(InvalidOtpException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage(), "code", "INVALID_OTP"));
+    }
+
+    /** 428 so the client knows to ask for a code, not to treat it as a failure. */
+    @ExceptionHandler(OtpRequiredException.class)
+    public ResponseEntity<Map<String, String>> handleOtpRequired(OtpRequiredException e) {
+        return ResponseEntity.status(HttpStatus.PRECONDITION_REQUIRED)
+                .body(Map.of("error", e.getMessage(), "code", "OTP_REQUIRED"));
     }
 
     @ExceptionHandler(IdempotencyConflictException.class)

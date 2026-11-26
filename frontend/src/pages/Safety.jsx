@@ -4,6 +4,8 @@ import { getSafety, updateSafety } from '../api/safety';
 import { parseAmountInput } from '../utils/money';
 import { AmountBox, Banner, ErrorText, Heading, Label, PrimaryButton, C, display } from '../components/ui';
 import { useMedia, DESKTOP_QUERY } from '../components/useMedia';
+import { useLanguage } from '../context/LanguageContext';
+import { msg } from '../i18n/strings';
 
 function parseLimit(raw) {
   if (!String(raw || '').trim()) return { value: null };
@@ -12,6 +14,7 @@ function parseLimit(raw) {
 
 export default function Safety() {
   const desktop = useMedia(DESKTOP_QUERY);
+  const { t } = useLanguage();
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [frozen, setFrozen] = useState(false);
@@ -51,9 +54,9 @@ export default function Safety() {
     try {
       const data = await updateSafety({ frozen: nextFrozen, dailyLimit: d.value, nightLimit: n.value });
       apply(data);
-      setMessage(nextFrozen !== frozen ? (data.frozen ? 'Wallet frozen.' : 'Wallet unfrozen.') : 'Saved.');
+      setMessage(nextFrozen !== frozen ? (data.frozen ? msg('Wallet frozen.') : msg('Wallet unfrozen.')) : msg('Saved.'));
     } catch {
-      setMessage("Couldn't save. Try again.");
+      setMessage(msg("Couldn't save. Try again."));
     } finally {
       setBusy(false);
     }
@@ -73,7 +76,7 @@ export default function Safety() {
           <>
             <div style={{ background: frozen ? C.grad : C.surface, color: frozen ? '#fff' : C.text, borderRadius: 26, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <span style={{ ...display, fontSize: 20, textTransform: 'uppercase' }}>{frozen ? 'Wallet frozen' : 'Freeze wallet'}</span>
+                <span style={{ ...display, fontSize: 20, textTransform: 'uppercase' }}>{frozen ? t('Wallet frozen') : t('Freeze wallet')}</span>
                 <button
                   role="switch"
                   aria-checked={frozen}
@@ -87,29 +90,29 @@ export default function Safety() {
               </div>
               <span style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.9 }}>
                 {frozen
-                  ? 'Sending is switched off. You can still receive money. Unfreeze when you are ready to send again.'
-                  : 'Think someone has your phone or password? Freeze sending instantly. You can still receive money.'}
+                  ? t('Sending is switched off. You can still receive money. Unfreeze when you are ready to send again.')
+                  : t('Think someone has your phone or password? Freeze sending instantly. You can still receive money.')}
               </span>
               <button
                 onClick={() => save(!frozen)}
                 disabled={busy}
                 style={{ alignSelf: 'flex-start', height: 46, padding: '0 20px', borderRadius: 999, background: frozen ? C.surface : C.grad, boxShadow: frozen ? 'none' : 'inset 0 1px 0 rgba(255,255,255,.25)', color: '#fff', fontSize: 14, fontWeight: 600 }}
               >
-                {frozen ? 'Unfreeze wallet' : 'Freeze wallet'}
+                {frozen ? t('Unfreeze wallet') : t('Freeze wallet')}
               </button>
             </div>
 
             <div style={{ background: C.surface, borderRadius: 26, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <span style={{ ...display, fontSize: 20, textTransform: 'uppercase' }}>Your own limits</span>
-              <span style={{ fontSize: 13.5, color: C.soft }}>Limits you set on yourself. Leave a box empty for no limit.</span>
+              <span style={{ ...display, fontSize: 20, textTransform: 'uppercase' }}>{t('Your own limits')}</span>
+              <span style={{ fontSize: 13.5, color: C.soft }}>{t('Limits you set on yourself. Leave a box empty for no limit.')}</span>
               <Label>Daily limit</Label>
-              <AmountBox height={54} fontSize={17} wide={false} placeholder="No limit" value={daily} onChange={(e) => { setDaily(e.target.value); setDailyErr(''); }} aria-label="Daily limit in rupees" />
+              <AmountBox height={54} fontSize={17} wide={false} placeholder={t('No limit')} value={daily} onChange={(e) => { setDaily(e.target.value); setDailyErr(''); }} aria-label="Daily limit in rupees" />
               <ErrorText>{dailyErr}</ErrorText>
               <Label style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Night limit · {hours(nightHours.start)}–{hours(nightHours.end)}</span>
-                <span style={{ fontWeight: 400, color: C.muted }}>Sri Lanka time.</span>
+                <span>{t('Night limit')} · {hours(nightHours.start)}–{hours(nightHours.end)}</span>
+                <span style={{ fontWeight: 400, color: C.muted }}>{t('Sri Lanka time.')}</span>
               </Label>
-              <AmountBox height={54} fontSize={17} wide={false} placeholder="No limit" value={night} onChange={(e) => { setNight(e.target.value); setNightErr(''); }} aria-label="Night limit in rupees" />
+              <AmountBox height={54} fontSize={17} wide={false} placeholder={t('No limit')} value={night} onChange={(e) => { setNight(e.target.value); setNightErr(''); }} aria-label="Night limit in rupees" />
               <ErrorText>{nightErr}</ErrorText>
               <PrimaryButton knob={null} height={52} disabled={busy} onClick={() => save()}>
                 Save limits

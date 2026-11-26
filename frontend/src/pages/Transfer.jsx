@@ -6,7 +6,7 @@ import { getBalance } from '../api/wallet';
 import { transfer, riskCheck, requestTransferCode } from '../api/transfer';
 import { lookupUser } from '../api/users';
 import { useLanguage } from '../context/LanguageContext';
-import { reasonText } from '../i18n/strings';
+import { msg, reasonText } from '../i18n/strings';
 import { ApiError } from '../api/client';
 import { formatMoney, parseAmountInput } from '../utils/money';
 import { digitsOnly, groupPhone, phoneError, toApiPhone, toDisplayPhone } from '../utils/phone';
@@ -15,18 +15,21 @@ import { parsePayLink } from '../utils/payLink';
 import { AmountBox, Banner, Card, ErrorText, Label, OutlineButton, PageTitle, PhoneBox, PrimaryButton, C, display, mono } from '../components/ui';
 
 const FAIL_COPY = {
-  network: { title: "Transfer didn't go through", label: 'Try again' },
-  notfound: { title: 'No wallet on that number', label: 'Change the number' },
-  blocked: { title: 'Blocked by your safety settings', label: 'Open Safety' },
-  balance: { title: 'Not enough balance', label: 'Deposit money' },
+  network: { title: msg("Transfer didn't go through"), label: msg('Try again') },
+  notfound: { title: msg('No wallet on that number'), label: msg('Change the number') },
+  blocked: { title: msg('Blocked by your safety settings'), label: msg('Open Safety') },
+  balance: { title: msg('Not enough balance'), label: msg('Deposit money') },
 };
 
-const CHECK_NAME = 'Check the name above is the person you mean to pay.';
+const CHECK_NAME = msg('Check the name above is the person you mean to pay.');
+const ALLOW_NOTE = msg("If it turns out to be a scam, report it from Activity straight away — money can only be recovered while it's still in the recipient's wallet.");
+const WARN_NOTE = msg("If it is a scam, report it from Activity straight away — money can only be recovered while it's still in their wallet.");
 
 function SummaryRow({ label, children, strong }) {
+  const { t } = useLanguage();
   return (
     <>
-      <span style={{ color: '#CFCAC2' }}>{label}</span>
+      <span style={{ color: '#CFCAC2' }}>{t(label)}</span>
       <span style={{ textAlign: 'right', fontWeight: strong ? 600 : 400 }}>{children}</span>
     </>
   );
@@ -34,7 +37,7 @@ function SummaryRow({ label, children, strong }) {
 
 export default function Transfer() {
   const navigate = useNavigate();
-  const { lang, t } = useLanguage();
+  const { lang, t, locale } = useLanguage();
   const [balance, setBalance] = useState(0);
   const [balanceError, setBalanceError] = useState(false);
   // A pay link (from a QR code) opens this page with the number and maybe the amount filled in.
@@ -69,7 +72,7 @@ export default function Transfer() {
     setScanning(false);
     const found = parsePayLink(text);
     if (!found) {
-      setPhoneErr("That code isn't a CeylonPay payment code.");
+      setPhoneErr(msg("That code isn't a CeylonPay payment code."));
       return;
     }
     setPhone(found.phone);
@@ -121,9 +124,9 @@ export default function Transfer() {
       setStage('confirm');
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
-        setPhoneErr('Nobody on CeylonPay has this number. Check it and try again.');
+        setPhoneErr(msg('Nobody on CeylonPay has this number. Check it and try again.'));
       } else {
-        setPhoneErr("Couldn't check that number. Try again in a moment.");
+        setPhoneErr(msg("Couldn't check that number. Try again in a moment."));
       }
     } finally {
       setChecking(false);
@@ -177,10 +180,10 @@ export default function Transfer() {
     failKind === 'blocked'
       ? blockedMessage
       : failKind === 'notfound'
-        ? `${toDisplayPhone(draft?.phoneDigits)} isn't registered with CeylonPay. Check the number, or ask them to sign up first.`
+        ? t("{phone} isn't registered with CeylonPay. Check the number, or ask them to sign up first.", { phone: toDisplayPhone(draft?.phoneDigits) })
         : failKind === 'balance'
-          ? `You need ${formatMoney((draft?.amountValue || 0) - balance)} more to send ${formatMoney(draft?.amountValue || 0)}. Deposit first, then send.`
-          : "We couldn't reach the server, so the transfer was never sent. Try again in a moment.";
+          ? t('You need {short} more to send {amount}. Deposit first, then send.', { short: formatMoney((draft?.amountValue || 0) - balance), amount: formatMoney(draft?.amountValue || 0) })
+          : t("We couldn't reach the server, so the transfer was never sent. Try again in a moment.");
 
   function failPrimaryAction() {
     if (failKind === 'balance') navigate('/deposit');
@@ -217,7 +220,7 @@ export default function Transfer() {
               {canScanQr() && !scanning && (
                 <OutlineButton type="button" onClick={() => setScanning(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
                   <span aria-hidden="true" style={{ width: 16, height: 16, border: '2px solid #F4EEE8', borderRadius: 4 }} />
-                  Scan a QR code
+                  {t('Scan a QR code')}
                 </OutlineButton>
               )}
               {scanning && <QrScanner onResult={handleScan} onClose={() => setScanning(false)} />}
@@ -235,7 +238,7 @@ export default function Transfer() {
                 <ErrorText>Couldn&apos;t load your balance — refresh the page to try again.</ErrorText>
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: C.muted }}>Available</span>
+                  <span style={{ color: C.muted }}>{t('Available')}</span>
                   <b>{formatMoney(balance)}</b>
                 </div>
               )}
@@ -254,20 +257,20 @@ export default function Transfer() {
         {stage === 'confirm' && draft && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ ...mono, fontSize: 12, color: C.muted }}>STEP 2 OF 2 · CONFIRM</span>
+              <span style={{ ...mono, fontSize: 12, color: C.muted }}>{t('STEP 2 OF 2 · CONFIRM')}</span>
               <OutlineButton height={36} onClick={() => setStage('form')} style={{ fontSize: 13, padding: '0 14px' }}>
                 Edit
               </OutlineButton>
             </div>
             <Card tone="dark" style={{ borderRadius: 28, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <span style={{ fontSize: 13, color: '#CFCAC2' }}>You&apos;re sending</span>
+              <span style={{ fontSize: 13, color: '#CFCAC2' }}>{t("You're sending")}</span>
               <span style={{ ...display, fontSize: 32, fontWeight: 500, lineHeight: 1 }}>{formatMoney(draft.amountValue)}</span>
               <div style={{ background: C.surface, color: C.text, borderRadius: 20, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{ width: 44, height: 44, borderRadius: '50%', background: C.accent, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 700 }}>
                   {(draft.recipientName || '?')[0]}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, color: C.muted }}>Paying</div>
+                  <div style={{ fontSize: 12, color: C.muted }}>{t('Paying')}</div>
                   <div style={{ fontSize: 19, fontWeight: 700 }}>{draft.recipientName}</div>
                 </div>
               </div>
@@ -285,7 +288,7 @@ export default function Transfer() {
             {outcome === 'ALLOW' && (
               <Card style={{ borderRadius: 20, padding: '14px 16px', fontSize: 13.5, lineHeight: 1.5, color: C.soft, display: 'flex', gap: 12 }}>
                 <span aria-hidden="true" style={{ flex: 'none', width: 10, height: 10, borderRadius: '50%', background: '#2F7A4E', marginTop: 5 }} />
-                <span>{CHECK_NAME} If it turns out to be a scam, report it from Activity straight away — money can only be recovered while it&apos;s still in the recipient&apos;s wallet.</span>
+                <span>{t(CHECK_NAME)} {t(ALLOW_NOTE)}</span>
               </Card>
             )}
 
@@ -301,7 +304,7 @@ export default function Transfer() {
                   ))}
                 </ul>
                 <span style={{ fontSize: 12.5, lineHeight: 1.45 }}>
-                  {CHECK_NAME} If it is a scam, report it from Activity straight away — money can only be recovered while it&apos;s still in their wallet.
+                  {t(CHECK_NAME)} {t(WARN_NOTE)}
                 </span>
                 <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start', background: C.surface, color: C.text, borderRadius: 14, padding: 12, cursor: 'pointer', fontSize: 13.5, lineHeight: 1.4, fontWeight: 500 }}>
                   <input
@@ -360,12 +363,12 @@ export default function Transfer() {
                   ))}
                 </ul>
                 <span style={{ fontSize: 13.5, lineHeight: 1.45, fontWeight: 600 }}>{t('holdNote')}</span>
-                <span style={{ fontSize: 12.5 }}>{CHECK_NAME}</span>
+                <span style={{ fontSize: 12.5 }}>{t(CHECK_NAME)}</span>
               </Card>
             )}
 
             <PrimaryButton knob="↗" height={58} onClick={confirmTransfer} disabled={sendDisabled}>
-              {busy ? 'Sending…' : outcome === 'HOLD' ? 'Submit for review' : `Send ${formatMoney(draft.amountValue)}`}
+              {busy ? 'Sending…' : outcome === 'HOLD' ? 'Submit for review' : t('Send {amount}', { amount: formatMoney(draft.amountValue) })}
             </PrimaryButton>
           </>
         )}
@@ -377,20 +380,20 @@ export default function Transfer() {
                 {held ? '‖' : '✓'}
               </span>
               <span style={{ ...display, fontSize: 24, lineHeight: 1.2, textTransform: 'uppercase' }}>
-                {held ? 'Held for review' : 'Sent'} {formatMoney(result.amount)}
+                {held ? t('Held for review {amount}', { amount: formatMoney(result.amount) }) : t('Sent {amount}', { amount: formatMoney(result.amount) })}
               </span>
               <span style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.9 }}>
-                to {draft.recipientName} · {toDisplayPhone(draft.phoneDigits)} · {timestampLabel(result.timestamp)}
+                {t('to {name} · {phone} · {time}', { name: draft.recipientName, phone: toDisplayPhone(draft.phoneDigits), time: timestampLabel(result.timestamp, locale) })}
               </span>
               {held && (
                 <span style={{ fontSize: 13.5, lineHeight: 1.55, color: '#DDD8D0' }}>
-                  Nothing has left your wallet yet. We&apos;ll move the money once a reviewer approves it. You can cancel it from Activity.
+                  {t("Nothing has left your wallet yet. We'll move the money once a reviewer approves it. You can cancel it from Activity.")}
                 </span>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 14px', borderTop: '1px solid rgba(255,255,255,.18)', paddingTop: 14, fontSize: 13.5 }}>
-                <span style={{ opacity: 0.75 }}>Reference</span>
+                <span style={{ opacity: 0.75 }}>{t('Reference')}</span>
                 <span style={{ textAlign: 'right', ...mono, fontSize: 12.5, wordBreak: 'break-all' }}>{result.transactionId}</span>
-                <span style={{ opacity: 0.75 }}>New balance</span>
+                <span style={{ opacity: 0.75 }}>{t('New balance')}</span>
                 <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatMoney(result.newBalance)}</span>
               </div>
             </Card>
@@ -409,9 +412,9 @@ export default function Transfer() {
           <>
             <Card tone="error" role="alert" style={{ borderRadius: 28, padding: 24, display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
               <span style={{ width: 54, height: 54, borderRadius: '50%', background: '#B3261E', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 22, fontWeight: 700 }} aria-hidden="true">!</span>
-              <span style={{ ...display, fontSize: 24, lineHeight: 1.2, textTransform: 'uppercase' }}>{fail.title}</span>
+              <span style={{ ...display, fontSize: 24, lineHeight: 1.2, textTransform: 'uppercase' }}>{t(fail.title)}</span>
               <span style={{ fontSize: 14, lineHeight: 1.5 }}>{failBody}</span>
-              <span style={{ ...mono, fontSize: 12.5, opacity: 0.8 }}>Nothing left your wallet. Balance {formatMoney(balance)}</span>
+              <span style={{ ...mono, fontSize: 12.5, opacity: 0.8 }}>{t('Nothing left your wallet. Balance {balance}', { balance: formatMoney(balance) })}</span>
             </Card>
             <div style={{ display: 'flex', gap: 10 }}>
               <PrimaryButton knob={null} onClick={failPrimaryAction} disabled={busy} style={{ flex: 1 }}>

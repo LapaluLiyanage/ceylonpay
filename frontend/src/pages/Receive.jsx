@@ -4,10 +4,12 @@ import { AppShell } from '../components/AppShell';
 import { useAuth } from '../context/AuthContext';
 import { buildPayLink } from '../utils/payLink';
 import { toDisplayPhone } from '../utils/phone';
-import { AmountBox, Card, GradButton, Heading, Label, Pill, C, mono } from '../components/ui';
+import { AmountBox, Card, GradButton, Heading, Label, Rich, C, mono } from '../components/ui';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Receive() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [amount, setAmount] = useState('');
   const [qr, setQr] = useState('');
   const [copied, setCopied] = useState(false);
@@ -40,15 +42,17 @@ export default function Receive() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <Heading>
-            Get <Pill>paid</Pill>
+            <Rich text={t('Get [paid]')} />
           </Heading>
           <span style={{ fontSize: 14, color: C.soft, lineHeight: 1.5 }}>
-            Whoever scans this lands on Send with your number{hasAmount ? ' and the amount' : ' (and amount, if set)'} filled in — and still checks your name before paying.
+            {hasAmount
+              ? t('Whoever scans this lands on Send with your number and the amount filled in — and still checks your name before paying.')
+              : t('Whoever scans this lands on Send with your number (and amount, if set) filled in — and still checks your name before paying.')}
           </span>
         </div>
         <Card style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 16 }}>
           <Label>Amount (optional)</Label>
-          <AmountBox height={54} fontSize={18} wide={false} placeholder="Any amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <AmountBox height={54} fontSize={18} wide={false} placeholder={t('Any amount')} value={amount} onChange={(e) => setAmount(e.target.value)} />
         </Card>
         <Card tone="dark" style={{ borderRadius: 30, padding: 22, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
           <div style={{ background: '#fff', borderRadius: 22, padding: 14, width: 'min(100%, 250px)', aspectRatio: '1', display: 'grid', placeItems: 'center' }}>
@@ -59,7 +63,7 @@ export default function Receive() {
             <div style={{ ...mono, fontSize: 13, color: '#CFCAC2', marginTop: 3 }}>{toDisplayPhone(user?.phone)}</div>
           </div>
           <span style={{ height: 30, padding: '0 12px', borderRadius: 999, background: C.accent, fontSize: 12.5, fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-            {hasAmount ? `Asks for Rs. ${Number(amount.replace(/[,\s]/g, '')).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : 'Any amount'}
+            {hasAmount ? t('Asks for {amount}', { amount: `Rs. ${Number(amount.replace(/[,\s]/g, '')).toLocaleString('en-US', { minimumFractionDigits: 2 })}` }) : t('Any amount')}
           </span>
         </Card>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: C.surface, borderRadius: 999, padding: '5px 5px 5px 16px' }}>

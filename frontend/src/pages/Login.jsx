@@ -4,10 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../api/client';
 import { digitsOnly, groupPhone, phoneError } from '../utils/phone';
 import { AuthSplitLayout, AuthSwitch } from '../components/AuthSplitLayout';
-import { Banner, ErrorText, Heading, Label, Pill, PhoneBox, PrimaryButton, TextInput } from '../components/ui';
+import { Banner, ErrorText, Heading, Label, PhoneBox, PrimaryButton, Rich, TextInput } from '../components/ui';
+import { useLanguage } from '../context/LanguageContext';
+import { msg } from '../i18n/strings';
 
 export default function Login() {
   const { login } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [phone, setPhone] = useState('');
@@ -23,7 +26,7 @@ export default function Login() {
     const errors = {};
     const pe = phoneError(phone);
     if (pe) errors.phone = pe;
-    if (!password) errors.password = 'Enter your password.';
+    if (!password) errors.password = msg('Enter your password.');
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
       setAuthError('');
@@ -40,9 +43,9 @@ export default function Login() {
       navigate(typeof from === 'string' && /^\/(?!\/)/.test(from) ? from : '/dashboard');
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        setAuthError('Wrong phone number or password. Try again.');
+        setAuthError(msg('Wrong phone number or password. Try again.'));
       } else {
-        setAuthError("Couldn't reach CeylonPay. Check your connection and try again.");
+        setAuthError(msg("Couldn't reach CeylonPay. Check your connection and try again."));
       }
     } finally {
       setBusy(false);
@@ -52,11 +55,11 @@ export default function Login() {
   return (
     <AuthSplitLayout
       action={<AuthSwitch onClick={() => navigate('/register')}>Create an account</AuthSwitch>}
-      heroLabel="Welcome back"
+      heroLabel={msg('Welcome back')}
       heroHeight={250}
     >
       <Heading size={28} style={{ margin: '4px 0 0' }}>
-        Log in to <Pill>CeylonPay</Pill>
+        <Rich text={t('Log in to [CeylonPay]')} />
       </Heading>
       {authError && <Banner>{authError}</Banner>}
       <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -90,7 +93,7 @@ export default function Login() {
         </PrimaryButton>
       </form>
       <p style={{ margin: 0, textAlign: 'center', fontSize: 13.5, color: '#C9BCB0' }}>
-        New here? <Link to="/register">Create a wallet</Link>
+        {t('New here?')} <Link to="/register">{t('Create a wallet')}</Link>
       </p>
     </AuthSplitLayout>
   );

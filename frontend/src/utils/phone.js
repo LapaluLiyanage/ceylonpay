@@ -1,3 +1,5 @@
+import { msg } from '../i18n/strings';
+
 export function digitsOnly(raw) {
   return String(raw || '').replace(/\D/g, '').slice(0, 9);
 }
@@ -21,8 +23,8 @@ export function normalizeStoredPhone(raw) {
 
 export function phoneError(raw) {
   const d = digitsOnly(raw);
-  if (!d) return 'Enter a phone number.';
-  if (d.length < 9) return 'A Sri Lankan mobile number has 9 digits after +94.';
-  if (d[0] !== '7') return 'Mobile numbers start with 7 — for example 77 123 4567.';
+  if (!d) return msg('Enter a phone number.');
+  if (d.length < 9) return msg('A Sri Lankan mobile number has 9 digits after +94.');
+  if (d[0] !== '7') return msg('Mobile numbers start with 7 — for example 77 123 4567.');
   return '';
 }

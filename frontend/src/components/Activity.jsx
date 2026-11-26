@@ -1,6 +1,8 @@
 import { formatMoney } from '../utils/money';
 import { toDisplayPhone, normalizeStoredPhone } from '../utils/phone';
 import { C, Chip, GradButton, display, mono, Skeleton } from './ui';
+import { useLanguage } from '../context/LanguageContext';
+import { msg, plain } from '../i18n/strings';
 
 export function SkeletonRows({ count = 3 }) {
   return (
@@ -13,21 +15,23 @@ export function SkeletonRows({ count = 3 }) {
 }
 
 export function ActivityErrorState({ onRetry }) {
+  const { t } = useLanguage();
   return (
     <div style={{ background: C.surface, borderRadius: 22, padding: 18, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
-      <span style={{ ...display, fontSize: 18, textTransform: 'uppercase' }}>Activity didn&apos;t load</span>
-      <span style={{ fontSize: 14, color: C.soft, lineHeight: 1.5 }}>The server didn&apos;t answer. Nothing has changed in your wallet.</span>
+      <span style={{ ...display, fontSize: 18, textTransform: 'uppercase' }}>{t("Activity didn't load")}</span>
+      <span style={{ fontSize: 14, color: C.soft, lineHeight: 1.5 }}>{t("The server didn't answer. Nothing has changed in your wallet.")}</span>
       <GradButton onClick={onRetry}>Try again</GradButton>
     </div>
   );
 }
 
 export function ActivityEmptyState({ onDeposit }) {
+  const { t } = useLanguage();
   return (
     <div style={{ padding: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
-      <span style={{ ...display, fontSize: 18, textTransform: 'uppercase' }}>No money has moved yet</span>
+      <span style={{ ...display, fontSize: 18, textTransform: 'uppercase' }}>{t('No money has moved yet')}</span>
       <span style={{ fontSize: 13.5, color: C.soft, lineHeight: 1.5, maxWidth: 380 }}>
-        Put your first rupees in the wallet — then you can send to any CeylonPay phone number.
+        {t('Put your first rupees in the wallet — then you can send to any CeylonPay phone number.')}
       </span>
       <GradButton onClick={onDeposit}>Make your first deposit</GradButton>
     </div>
@@ -36,6 +40,7 @@ export function ActivityEmptyState({ onDeposit }) {
 
 /** One line of the transaction list. `action` is {label, onClick, kind: 'cancel' | 'report'}. */
 export function TransactionRow({ direction, title, subtitle, amountText, stateLabel, tone, muted, struck, reference, action, compact }) {
+  const { t } = useLanguage();
   const isOut = direction === 'SENT';
   return (
     <div style={{ display: 'flex', alignItems: compact ? 'center' : 'flex-start', gap: 12, padding: compact ? '13px 0' : '14px 0', borderTop: `1px solid ${C.line}` }}>
@@ -68,7 +73,7 @@ export function TransactionRow({ direction, title, subtitle, amountText, stateLa
                 : { height: 32, padding: '0 12px', borderRadius: 999, border: `1.5px solid ${C.outline}`, fontSize: 12 }
             }
           >
-            {action.label}
+            {t(action.label)}
           </button>
         )}
       </div>
@@ -76,14 +81,15 @@ export function TransactionRow({ direction, title, subtitle, amountText, stateLa
   );
 }
 
-export function timestampLabel(iso) {
-  return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
+export function timestampLabel(iso, locale = 'en-GB') {
+  return new Date(iso).toLocaleString(locale, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-const STATUS_LABELS = { PENDING_REVIEW: 'Held for review', REJECTED: 'Rejected', CANCELLED: 'Cancelled', REVERSED: 'Reversed' };
+const STATUS_LABELS = { PENDING_REVIEW: msg('Held for review'), REJECTED: msg('Rejected'), CANCELLED: msg('Cancelled'), REVERSED: msg('Reversed') };
 const STATUS_TONES = { PENDING_REVIEW: 'warn', REJECTED: 'error', CANCELLED: 'muted', REVERSED: 'error' };
 
-export function rowFor(tx) {
+/** One transaction as the list shows it. Pass the translator and locale to get the person's language; the state label is translated when shown. */
+export function rowFor(tx, t = plain, locale = 'en-GB') {
   const isOut = tx.direction === 'SENT';
   const reversal = tx.status === 'REVERSAL';
   return {
@@ -95,8 +101,8 @@ export function rowFor(tx) {
     struck: ['REJECTED', 'CANCELLED'].includes(tx.status),
     canCancel: isOut && tx.status === 'PENDING_REVIEW',
     canReport: isOut && tx.status === 'SUCCESS',
-    title: isOut ? `To ${tx.counterpartyName}` : `From ${tx.counterpartyName}`,
-    subtitle: `${toDisplayPhone(normalizeStoredPhone(tx.counterpartyPhone))} · ${timestampLabel(tx.timestamp)}`,
+    title: t(isOut ? msg('To {name}') : msg('From {name}'), { name: tx.counterpartyName }),
+    subtitle: `${toDisplayPhone(normalizeStoredPhone(tx.counterpartyPhone))} · ${timestampLabel(tx.timestamp, locale)}`,
     reference: tx.id,
     amountText: (isOut ? '− ' : '+ ') + formatMoney(tx.amount),
   };

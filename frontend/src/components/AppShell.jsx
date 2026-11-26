@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { LANGUAGES } from '../i18n/strings';
+import { LanguageSwitch } from './LanguageSwitch';
 import { toDisplayPhone } from '../utils/phone';
 import { C, Logo, LogoMark, GradButton, mono } from './ui';
 import { useMedia, DESKTOP_QUERY } from './useMedia';
@@ -36,40 +36,12 @@ function Icon({ path, size = 18, stroke = 1.8 }) {
   );
 }
 
-function LanguageSwitch({ stretch, track }) {
-  const { lang, setLang } = useLanguage();
-  return (
-    <div role="group" aria-label="Language" style={{ display: 'flex', background: track, borderRadius: 999, padding: 3, gap: 2 }}>
-      {LANGUAGES.map((l) => (
-        <button
-          key={l.code}
-          onClick={() => setLang(l.code)}
-          aria-pressed={lang === l.code}
-          title={l.name}
-          style={{
-            flex: stretch ? 1 : 'none',
-            height: 32,
-            minWidth: 38,
-            padding: '0 8px',
-            borderRadius: 999,
-            background: lang === l.code ? C.accent : 'transparent',
-            color: lang === l.code ? '#fff' : C.text,
-            fontSize: 12,
-            fontWeight: 600,
-          }}
-        >
-          {l.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function VerifyBanner({ onVerify, compact }) {
+  const { t } = useLanguage();
   return (
     <div style={{ background: 'rgba(226,87,43,.18)', borderRadius: 18, padding: compact ? '10px 10px 10px 16px' : 14, display: 'flex', flexDirection: compact ? 'row' : 'column', alignItems: compact ? 'center' : 'stretch', gap: 10 }}>
       <span style={{ flex: 1, fontSize: 13, lineHeight: 1.4 }}>
-        <b>Verify your phone</b> to start sending money.
+        <b>{t('Verify your phone')}</b> {t('to start sending money.')}
       </span>
       <GradButton height={compact ? 36 : 38} onClick={onVerify} style={{ fontSize: 12.5, padding: '0 14px' }}>
         {compact ? 'Verify →' : 'Verify now →'}
@@ -80,6 +52,7 @@ function VerifyBanner({ onVerify, compact }) {
 
 export function AppShell({ children }) {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const desktop = useMedia(DESKTOP_QUERY);
@@ -104,7 +77,7 @@ export function AppShell({ children }) {
             <Logo size={30} fontSize={15} />
           </div>
           <nav aria-label="Main" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={{ ...mono, fontSize: 11, color: '#8A7C70', padding: '0 12px 6px' }}>MENU</span>
+            <span style={{ ...mono, fontSize: 11, color: '#8A7C70', padding: '0 12px 6px' }}>{t('MENU')}</span>
             {items.map((item, i) => {
               const active = location.pathname === item.path;
               return (
@@ -130,7 +103,7 @@ export function AppShell({ children }) {
                   <span style={{ flex: 'none', width: 34, height: 34, borderRadius: 11, background: active ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.06)', display: 'grid', placeItems: 'center' }}>
                     <Icon path={ICONS[item.path]} />
                   </span>
-                  <span style={{ flex: 1 }}>{item.label}</span>
+                  <span style={{ flex: 1 }}>{t(item.label)}</span>
                   <span style={{ ...mono, fontSize: 10.5, opacity: 0.5 }}>{String(i + 1).padStart(2, '0')}</span>
                 </button>
               );
@@ -148,7 +121,7 @@ export function AppShell({ children }) {
             </div>
             <LanguageSwitch stretch track={C.surface2} />
             <button className="cp-danger" onClick={logout} style={{ height: 40, borderRadius: 999, border: `1.5px solid ${C.outline}`, fontSize: 13, fontWeight: 500 }}>
-              Log out
+              {t('Log out')}
             </button>
           </div>
         </aside>
@@ -169,7 +142,7 @@ export function AppShell({ children }) {
         </div>
         <LanguageSwitch track={C.surface} />
         <button className="cp-danger" onClick={logout} style={{ height: 38, padding: '0 12px', borderRadius: 999, border: `1.5px solid ${C.outline}`, fontSize: 12.5, fontWeight: 500 }}>
-          Log out
+          {t('Log out')}
         </button>
       </header>
       {needsVerify && (
@@ -192,7 +165,7 @@ export function AppShell({ children }) {
               style={{ flex: '1 1 0', minWidth: 0, height: 54, borderRadius: 22, background: active ? C.grad : 'transparent', color: active ? '#fff' : '#CDBFB3', fontSize: 10, fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, whiteSpace: 'nowrap' }}
             >
               <Icon path={ICONS[item.path]} size={19} stroke={1.9} />
-              <span>{item.label}</span>
+              <span>{t(item.label)}</span>
             </button>
           );
         })}

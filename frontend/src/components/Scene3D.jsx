@@ -173,17 +173,16 @@ function buildScene(renderer) {
 
 /**
  * The 3D bank and coins. It fills its parent, so the parent must be `position: relative`.
- * `rotation` is the yaw to settle at (radians); change it to turn the building. `offsetY` lifts it.
+ * `rotation` is the yaw to settle at (radians); change it to turn the building.
  * If WebGL is unavailable it renders nothing and the page's own gradient shows through.
  */
-export default function Scene3D({ rotation = -0.35, offsetY = 0 }) {
+export default function Scene3D({ rotation = -0.35 }) {
   const hostRef = useRef(null);
-  const targetRef = useRef({ rot: rotation, offsetY, mx: 0, my: 0 });
+  const targetRef = useRef({ rot: rotation, mx: 0, my: 0 });
 
   useEffect(() => {
     targetRef.current.rot = rotation;
-    targetRef.current.offsetY = offsetY;
-  }, [rotation, offsetY]);
+  }, [rotation]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -209,13 +208,16 @@ export default function Scene3D({ rotation = -0.35, offsetY = 0 }) {
     const { scene, root, coinGroup, floaters, dispose } = buildScene(renderer);
     const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    // The whole model is about 5.6 units tall and wide. Pull the camera back until it fills the frame, as
+    // the design does (about 10.5 units away in a roughly square frame, further back in a tall narrow one).
+    const MODEL_SIZE = 5.6;
+    const HALF_TAN = Math.tan((camera.fov * Math.PI) / 360);
     const fit = () => {
       const w = host.clientWidth || 1;
       const h = host.clientHeight || 1;
       renderer.setSize(w, h, false);
       camera.aspect = w / h;
-      // Narrow, tall frames need the camera further back so the whole building fits.
-      camera.position.z = camera.aspect < 0.9 ? (10.5 / Math.max(0.6, camera.aspect)) * 0.9 : 10.5;
+      camera.position.z = Math.max(MODEL_SIZE / (2 * HALF_TAN), MODEL_SIZE / (camera.aspect * 2 * HALF_TAN));
       camera.updateProjectionMatrix();
     };
     fit();
@@ -229,7 +231,6 @@ export default function Scene3D({ rotation = -0.35, offsetY = 0 }) {
       const target = targetRef.current;
       root.rotation.y += (target.rot + Math.sin(t * 0.35) * 0.2 + target.mx * 0.35 - root.rotation.y) * 0.05;
       root.rotation.x += (target.my * 0.18 - root.rotation.x) * 0.05;
-      root.position.y += (target.offsetY - root.position.y) * 0.08;
       coinGroup.rotation.y = t * 1.3;
       coinGroup.position.y = 2.1 + Math.sin(t * 1.5) * 0.16;
       floaters.forEach((c, i) => {
@@ -271,7 +272,7 @@ export default function Scene3D({ rotation = -0.35, offsetY = 0 }) {
       renderer.dispose();
       if (el.parentNode === host) host.removeChild(el);
     };
-    // The scene is built once; rotation and offsetY are pushed in through targetRef.
+    // The scene is built once; rotation is pushed in through targetRef.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

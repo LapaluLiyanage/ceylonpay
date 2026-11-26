@@ -1,26 +1,59 @@
 # CeylonPay
 
-A wallet and peer-to-peer payment API built with Spring Boot, backed by PostgreSQL, with a React frontend. Users register, deposit money into a wallet, send money to other users by phone number, and view their transaction history — all behind JWT authentication.
+A wallet and peer-to-peer payment app for Sri Lanka, with a scam shield built into every transfer. Spring Boot and PostgreSQL on the back, React on the front. Users register, deposit money, send it to other people by phone number, and get warned (or stopped) when a payment looks like a scam.
+
+> **This is a learning project.** I built it to learn Java and Spring Boot end to end: REST APIs, Spring Security with JWT, JPA and Flyway migrations, database transactions, a transactional outbox, rate limiting, and testing. The money is simulated (deposits come from a fake funding source), and it is not a licensed payment service. Please do not put real money or real personal data into it.
 
 **Live:** [ceylonpay.vercel.app](https://ceylonpay.vercel.app) (frontend) · [ceylonpay-api.onrender.com](https://ceylonpay-api.onrender.com) (API)
 
-> The API runs on a free-tier host that spins down after periods of inactivity — the first request after a while may take 20–30 seconds to wake up.
+> **If the first request is slow or shows "The server is waking up":** the API runs on a free host that puts it to sleep when nobody is using it. See [Gateway timeouts and the sleeping server](#gateway-timeouts-and-the-sleeping-server).
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Welcome](docs/screenshots/01-welcome.jpg) | ![Log in](docs/screenshots/02-login.jpg) |
+| **Welcome.** Three intro slides over a 3D bank (three.js). New visitors land here after the opening splash. | **Log in.** The same 3D scene beside the form. EN, සිං and தமிழ் can be switched before logging in. |
+| ![Home](docs/screenshots/03-dashboard.jpg) | ![Scam warning](docs/screenshots/04-scam-warning.jpg) |
+| **Home.** Balance, this month's totals and recent activity. | **Scam shield.** A risky transfer shows the reasons and needs the sender to confirm. |
+| ![Sinhala](docs/screenshots/05-sinhala.jpg) | ![Activity](docs/screenshots/06-activity.jpg) |
+| **Sinhala (and Tamil).** The whole app, including the warning text, in the chosen language. | **Activity.** Sent, received and held payments, with *Cancel* and *Report scam*. |
+| ![Receive](docs/screenshots/07-receive.jpg) | ![Safety](docs/screenshots/08-safety.jpg) |
+| **Get paid.** A QR code (and link) for your number and an optional amount. | **Safety.** Freeze the wallet, or set your own daily and night limits. |
+
+On a phone the sidebar becomes a bottom bar and everything stacks:
+
+![On a phone](docs/screenshots/09-mobile.png)
+
+The screenshots were taken from the running app with sample data.
 
 ## Features
 
-- **Authentication** — register and log in with a Sri Lankan phone number and password; stateless JWT sessions.
+- **Authentication** — register and log in with a Sri Lankan phone number and password; short-lived JWT access tokens with rotating refresh tokens.
 - **Wallet** — every account gets a wallet on registration; check balance, deposit funds.
-- **Peer-to-peer transfer** — send money to any other user by phone number, with balance and self-transfer validation, executed atomically.
+- **Peer-to-peer transfer** — send money to any other user by phone number, with name check, balance and self-transfer validation, executed atomically.
+- **Scam shield** — every transfer gets a risk score; risky ones warn, the riskiest are held for a reviewer. Senders can report a scam and get money back while it is still in the receiver's wallet. See [Scam protection](#scam-protection).
+- **Scan to pay** — QR codes that open the Send page with the number and amount filled in.
+- **Three languages** — English, Sinhala and Tamil across the whole app.
 - **Transaction history** — a combined, direction-aware view of everything sent and received.
-- **React frontend** — a full UI (Login, Register, Dashboard, Deposit, Transfer, History) wired to the API.
+- **React frontend** — warm dark design with an animated splash, intro slides and a 3D scene, a sidebar on desktop and a bottom bar on phones.
 
 ## Tech stack
 
-**Backend:** Java 21 · Spring Boot 4.1.1 · Spring Security · Spring Data JPA / Hibernate · PostgreSQL · JJWT · Maven
+**Backend:** Java 21 · Spring Boot 4.1.1 · Spring Security · Spring Data JPA / Hibernate · Flyway · PostgreSQL · JJWT · Redis (optional, for shared rate limits) · Maven
 
-**Frontend:** React 19 · Vite · React Router · Context API · Vitest
+**Frontend:** React 19 · Vite · React Router · three.js (3D scene, loaded only on the intro and sign-in screens) · GSAP (splash animation) · Vitest
 
-**Infrastructure:** Docker (multi-stage build) · Render (API + Postgres) · Vercel (frontend)
+**Infrastructure:** Docker (multi-stage build) · Render (API) · Supabase (PostgreSQL) · Vercel (frontend)
+
+## What I learned building it
+
+- **Money needs care:** `BigDecimal` for amounts, and `@Transactional` so a transfer either fully happens or not at all.
+- **Security is mostly details:** JWT access tokens that expire fast, refresh tokens stored only as a hash and rotated on every use, rate limits on the sensitive endpoints, and every query scoped to the logged-in user.
+- **Schema changes belong in migrations:** Flyway owns the schema and Hibernate only validates it.
+- **Events without losing any:** the transactional outbox writes an event in the same transaction as the money movement, and a publisher sends it on later, at least once.
+- **Free hosting has sharp edges:** a sleeping server, a free database that expires or pauses, and gateway timeouts. Those are written up below because they look like bugs but are not.
+- **Tests as a safety net:** 69 backend tests and 118 frontend tests (including a check that every screen draws in all three languages).
 
 ## Project structure
 
@@ -47,11 +80,21 @@ CeylonPay/
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | POST | `/api/auth/register` | — | Create an account and wallet |
-| POST | `/api/auth/login` | — | Log in, receive a JWT |
+| POST | `/api/auth/login` | — | Log in, receive an access token and a refresh token |
+| POST | `/api/auth/refresh` | — | Swap a refresh token for a new pair |
+| POST | `/api/auth/logout` | — | Revoke the login session |
 | GET | `/api/wallet/balance` | ✓ | Current wallet balance |
 | POST | `/api/wallet/deposit` | ✓ | Deposit funds |
+| GET | `/api/users/lookup` | ✓ | Name check: who owns a phone number |
+| POST | `/api/transfer/risk-check` | ✓ | Score a transfer before sending (allow, warn or hold) |
 | POST | `/api/transfer` | ✓ | Send money to another user by phone |
+| POST | `/api/transfer/otp` | ✓ | Text a one-time code for a risky transfer (when codes are on) |
+| POST | `/api/transfer/{id}/cancel` | ✓ | Cancel a transfer that is held for review |
+| POST | `/api/transfer/{id}/report` | ✓ | Report a completed transfer as a scam |
 | GET | `/api/transactions` | ✓ | Transaction history (sent + received) |
+| GET / PUT | `/api/safety` | ✓ | Freeze the wallet, set daily and night limits |
+| POST | `/api/account/phone/request` · `/verify` | ✓ | Verify your phone number (when codes are on) |
+| GET / POST | `/api/admin/**` | admin | Review held transfers and scam reports, mule list, outbox |
 
 Authenticated requests need `Authorization: Bearer <token>`.
 
@@ -82,7 +125,7 @@ npm install
 npm run dev
 ```
 
-Starts on `http://localhost:5173` and expects the API at `http://localhost:8080` (override with a `VITE_API_BASE_URL` environment variable).
+Starts on `http://localhost:5173` and expects the API at `http://localhost:8080` (override with a `VITE_API_BASE_URL` environment variable). If the API is not running you can still see the welcome, log in and register screens, but nothing that needs the server.
 
 ### With Docker Compose
 
@@ -115,7 +158,7 @@ cd frontend && npm test   # frontend — Vitest
 - **Report and recover** — a sender can press *Report scam* on a completed transfer. The receiving account's outgoing money is put on hold immediately (the user can't lift it). A reviewer on the **Review** page (admins only) either upholds the report, which pulls back what the receiver still has as a new ledger counter-transfer (history is never edited) and flags the account in future risk scores, or dismisses it and lifts the hold.
 
 - **Mule detection** — the Review page lists accounts that received from 3+ different people in 24 hours *and* pass the money on, are new, or are already reported. An admin can hold such an account (it can still receive, not send) or release it. This is rule-based; a trained model needs real labelled data, and the upheld/dismissed scam reports are what will provide it.
-- **Sinhala, Tamil and English warnings** — pick a language in the header. Risk reasons are returned as stable codes with their numbers, and the app shows fixed translations (`frontend/src/i18n/strings.js`). Have a fluent speaker review the Sinhala and Tamil before launch; the server's English text is the fallback for any unknown code.
+- **Sinhala, Tamil and English** — pick a language with the EN / සිං / தமிழ் switch (it is on the welcome and log-in screens too). Risk reasons are returned as stable codes with their numbers, and the app shows fixed translations of them (`frontend/src/i18n/strings.js`). The rest of the screens use a phrase table (`frontend/src/i18n/phrases.js`) keyed by the English text; anything missing falls back to English, and a test fails if marked text has no Sinhala or Tamil line. Have a fluent speaker review the Sinhala and Tamil before launch. The admin screen and messages written by the server stay in English.
 
 ## Sessions
 
@@ -142,6 +185,29 @@ Every transfer, hold, cancellation, report and reversal writes an event to the `
 
 A failed event is retried with backoff (10 s, 20 s, 40 s, up to 10 min). After 5 failures it is parked as dead. Admins see the count of waiting events and the dead ones at `GET /api/admin/outbox` and can put one back with `POST /api/admin/outbox/{id}/requeue`. Several app instances can run at once without sending an event twice. To use Kafka, SQS or RabbitMQ, add one class implementing `EventPublisher`.
 
+## Gateway timeouts and the sleeping server
+
+If the page seems stuck, or shows **"The server is waking up. This can take up to a minute — try again shortly."**, nothing is broken. This is what happens on free hosting.
+
+**What is going on**
+
+1. The API runs on Render's free web service. After about 15 minutes with no traffic Render stops it.
+2. The next request has to start the whole Java app again (JVM, Spring, database connection pool, Flyway check). That takes roughly 30 to 60 seconds.
+3. While it starts, Render's gateway answers instead of the app. If the app takes too long, the gateway gives up with **502 Bad Gateway**, **503 Service Unavailable** or **504 Gateway Timeout**. Those answers are plain HTML pages, not the JSON the API normally sends.
+4. The database can be asleep too. A free Supabase project pauses after a week without use and must be restored from its dashboard. A free Render Postgres is deleted after about 30 days, which is why this project moved to Supabase.
+
+**What the app does about it**
+
+- A 502, 503 or 504 (or no answer at all within 65 seconds) is shown as *"The server is waking up…"* in the person's language, instead of a confusing error or a blank screen. Log in and Create wallet show it directly.
+- The error page is never parsed as JSON, so the app does not crash on it (`frontend/src/api/client.js`, covered by tests).
+- Nothing is lost: a transfer that gets a gateway error was never sent, and the screen says nothing left the wallet.
+
+**What you can do**
+
+- Wait a minute and try again. The second attempt is fast.
+- To avoid it altogether, use a paid instance, or call any public URL of the API every 10 minutes from a free monitor to keep it awake.
+- If the error does not go away after a few minutes, check the Render logs. A wrong database password shows up as *password authentication failed*, and a paused Supabase project as connection timeouts.
+
 ## Admin access
 
 `/api/admin/**` requires the `ADMIN` role (carried as a claim in the JWT). Nobody can become an admin through the API. Register the account first, then set `CEYLONPAY_ADMIN_PHONE` to its phone number and restart; the account is promoted at startup.
@@ -151,3 +217,8 @@ Phone numbers are stored in one canonical form (`+947XXXXXXXX`); `0771234567` an
 ## Known limitations
 
 - CORS origins and the JWT secret are configured via environment variables but are not rotated or vaulted — fine for a demo deployment, not production-hardened.
+- Deposits are simulated and no real bank or card is connected. Do not use real money.
+- The free hosting sleeps and can answer with gateway timeouts, see above.
+- SMS codes are off by default, and the built-in sender only logs messages until an SMS provider is connected.
+- The Sinhala and Tamil text has not been reviewed by a fluent speaker yet.
+- The Admin screen is English only.

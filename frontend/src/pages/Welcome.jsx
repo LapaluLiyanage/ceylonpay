@@ -1,21 +1,43 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Float } from '../components/AuthSplitLayout';
+import { LanguageSwitch } from '../components/LanguageSwitch';
 import { Hero3D } from '../components/Hero3D';
 import { useMedia, DESKTOP_QUERY } from '../components/useMedia';
-import { Logo, OutlineButton, Pill, PrimaryButton, C, display, mono } from '../components/ui';
+import { Logo, OutlineButton, PrimaryButton, Rich, C, display, mono } from '../components/ui';
+import { useLanguage } from '../context/LanguageContext';
+import { msg } from '../i18n/strings';
 import { markWelcomed } from '../utils/firstRun';
 
 const SLIDES = [
-  { tag: '01 — SEND', a: 'SEND TO ANY', b: 'PHONE', c: 'NUMBER', body: 'Type a +94 number or scan a code. No fees, no bank details — a wallet tied to your phone.', pills: ['+94 77 123 4567', 'Fee Rs. 0.00', 'Scan to pay'], rotation: -0.35 },
-  { tag: '02 — CHECK', a: 'SEE WHO', b: 'YOU PAY', c: 'FIRST', body: 'Every transfer shows the recipient’s name and is scored against scam signals. Risky ones warn you; the riskiest wait for a reviewer.', pills: ['Paying K. Perera', 'Risk score 62', 'Held for review'], rotation: 0.45 },
-  { tag: '03 — RECOVER', a: 'SCAMMED?', b: 'GET IT', c: 'BACK', body: 'Report a payment within 30 days. We stop the receiver sending at once and return what’s still in their wallet.', pills: ['Report scam', 'Account on hold', 'Refund Rs. 7,400.00'], rotation: -0.75 },
+  {
+    tag: msg('01 — SEND'),
+    title: msg('SEND TO ANY [PHONE] NUMBER'),
+    body: msg('Type a +94 number or scan a code. No fees, no bank details — a wallet tied to your phone.'),
+    pills: ['+94 77 123 4567', msg('Fee Rs. 0.00'), msg('Scan to pay')],
+    rotation: -0.35,
+  },
+  {
+    tag: msg('02 — CHECK'),
+    title: msg('SEE WHO [YOU PAY] FIRST'),
+    body: msg('Every transfer shows the recipient’s name and is scored against scam signals. Risky ones warn you; the riskiest wait for a reviewer.'),
+    pills: [msg('Paying K. Perera'), msg('Risk score 62'), msg('Held for review')],
+    rotation: 0.45,
+  },
+  {
+    tag: msg('03 — RECOVER'),
+    title: msg('SCAMMED? [GET IT] BACK'),
+    body: msg('Report a payment within 30 days. We stop the receiver sending at once and return what’s still in their wallet.'),
+    pills: [msg('Report scam'), msg('Account on hold'), msg('Refund Rs. 7,400.00')],
+    rotation: -0.75,
+  },
 ];
 
 /** Three intro slides over the 3D scene, shown to first-time visitors. */
 export default function Welcome() {
   const navigate = useNavigate();
   const desktop = useMedia(DESKTOP_QUERY);
+  const { t } = useLanguage();
   const [index, setIndex] = useState(0);
   const slide = SLIDES[index];
   const last = index === SLIDES.length - 1;
@@ -33,19 +55,19 @@ export default function Welcome() {
           <span key={i} style={{ height: 8, width: i === index ? 26 : 8, borderRadius: 999, background: i === index ? C.accent : '#5A4A40', transition: 'width .4s' }} />
         ))}
       </div>
-      <Float knobFirst style={{ left: '6%', top: '20%' }} key={`p1-${index}`}>{slide.pills[0]}</Float>
-      <Float style={{ right: '5%', top: '50%' }} key={`p2-${index}`}>{slide.pills[1]}</Float>
-      <Float knobFirst style={{ left: '7%', bottom: '9%' }} key={`p3-${index}`}>{slide.pills[2]}</Float>
+      <Float knobFirst style={{ left: '6%', top: '20%' }} key={`p1-${index}`}>{t(slide.pills[0])}</Float>
+      <Float style={{ right: '5%', top: '50%' }} key={`p2-${index}`}>{t(slide.pills[1])}</Float>
+      <Float knobFirst style={{ left: '7%', bottom: '9%' }} key={`p3-${index}`}>{t(slide.pills[2])}</Float>
     </div>
   );
 
   const copy = (
     <div key={index} className="wl-swap" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <span style={{ ...mono, fontSize: 12, color: C.muted }}>{slide.tag}</span>
+      <span style={{ ...mono, fontSize: 12, color: C.muted }}>{t(slide.tag)}</span>
       <h1 style={{ margin: 0, ...display, fontSize: desktop ? 'clamp(34px, 3.6vw, 52px)' : 28, lineHeight: 1.16, letterSpacing: '-.01em' }}>
-        {slide.a} <Pill>{slide.b}</Pill> {slide.c}
+        <Rich text={t(slide.title)} />
       </h1>
-      <p style={{ margin: 0, fontSize: desktop ? 16 : 14.5, lineHeight: 1.5, color: C.soft, textWrap: 'pretty', maxWidth: 520 }}>{slide.body}</p>
+      <p style={{ margin: 0, fontSize: desktop ? 16 : 14.5, lineHeight: 1.5, color: C.soft, textWrap: 'pretty', maxWidth: 520 }}>{t(slide.body)}</p>
     </div>
   );
 
@@ -67,11 +89,14 @@ export default function Welcome() {
   );
 
   const header = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
       <Logo size={28} fontSize={14} />
-      <button onClick={() => leave('/login')} style={{ height: 44, padding: '0 18px', borderRadius: 999, background: C.surface, fontSize: 14, fontWeight: 500 }}>
-        Skip
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <LanguageSwitch track={C.surface} />
+        <button onClick={() => leave('/login')} style={{ height: 44, padding: '0 18px', borderRadius: 999, background: C.surface, fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap' }}>
+          {t('Skip')}
+        </button>
+      </div>
     </div>
   );
 

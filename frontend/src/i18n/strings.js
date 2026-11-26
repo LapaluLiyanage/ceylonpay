@@ -1,3 +1,5 @@
+import { PHRASES } from './phrases';
+
 // Scam-warning text in English, Sinhala and Tamil.
 // These are fixed, reviewable translations on purpose: a warning that decides whether someone
 // sends money should never be improvised. The Sinhala and Tamil should be read over by a fluent
@@ -103,6 +105,30 @@ export function reasonText(reason, lang) {
   return template.replace(/\{(\w+)\}/g, (match, key) => (key in params ? params[key] : match));
 }
 
-export function uiText(lang, key) {
-  return UI[lang]?.[key] ?? UI[DEFAULT_LANGUAGE][key];
+/** Fills {name}-style gaps in a piece of text. A gap with no value is left as written. */
+function fill(text, vars) {
+  if (!vars) return text;
+  return text.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? vars[key] : match));
 }
+
+/**
+ * Text for a key in the chosen language. Looks in the warning wording above first, then in the screen
+ * phrases, and finally falls back to the key itself, which is the English text.
+ */
+export function uiText(lang, key, vars) {
+  const found = UI[lang]?.[key] ?? PHRASES[lang]?.[key] ?? UI[DEFAULT_LANGUAGE][key] ?? key;
+  return fill(found, vars);
+}
+
+/** English text with its gaps filled: the translator to use where no language is chosen (and in tests). */
+export function plain(key, vars) {
+  return fill(UI[DEFAULT_LANGUAGE][key] ?? key, vars);
+}
+
+/** Marks a piece of English text as needing a translation, and returns it unchanged. */
+export function msg(text) {
+  return text;
+}
+
+/** The locale used to format dates and month names in each language. */
+export const LOCALES = { en: 'en-GB', si: 'si-LK', ta: 'ta-LK' };

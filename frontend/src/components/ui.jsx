@@ -1,4 +1,12 @@
 // Shared building blocks for the CeylonPay look: warm dark surfaces, an orange gradient, pill shapes.
+// Text passed to these as a plain string is translated into the chosen language automatically.
+import { useLanguage } from '../context/LanguageContext';
+
+/** Returns a function that translates a plain string and leaves anything else (markup) alone. */
+export function useTr() {
+  const { t } = useLanguage();
+  return (child) => (typeof child === 'string' ? t(child) : child);
+}
 
 export const C = {
   bg: '#0B0908',
@@ -58,13 +66,20 @@ export function Pill({ children, pad = 12 }) {
 }
 
 export function Heading({ children, size = 30, style }) {
+  const tr = useTr();
   return (
-    <h1 style={{ margin: 0, ...display, fontSize: size, lineHeight: 1.15, letterSpacing: '-.01em', textTransform: 'uppercase', ...style }}>{children}</h1>
+    <h1 style={{ margin: 0, ...display, fontSize: size, lineHeight: 1.15, letterSpacing: '-.01em', textTransform: 'uppercase', ...style }}>{tr(children)}</h1>
   );
+}
+
+/** Text with [bracketed] words shown on the orange pill, for headings. Pass already-translated text. */
+export function Rich({ text, pad }) {
+  return text.split(/\[([^\]]+)\]/).map((part, i) => (i % 2 ? <Pill key={i} pad={pad}>{part}</Pill> : part));
 }
 
 /** Orange call-to-action with an arrow knob on the right. */
 export function PrimaryButton({ children, knob = '→', height = 56, style, ...props }) {
+  const tr = useTr();
   return (
     <button
       className="cp-grad"
@@ -86,7 +101,7 @@ export function PrimaryButton({ children, knob = '→', height = 56, style, ...p
       }}
       {...props}
     >
-      <span>{children}</span>
+      <span>{tr(children)}</span>
       {knob && (
         <span
           style={{
@@ -110,33 +125,36 @@ export function PrimaryButton({ children, knob = '→', height = 56, style, ...p
 
 /** Plain orange pill, no knob. */
 export function GradButton({ children, height = 46, style, ...props }) {
+  const tr = useTr();
   return (
     <button
       className="cp-grad"
       style={{ height, padding: '0 18px', border: 0, borderRadius: 999, background: C.grad, boxShadow: INSET, color: '#fff', fontSize: 14, fontWeight: 600, opacity: props.disabled ? 0.55 : 1, ...style }}
       {...props}
     >
-      {children}
+      {tr(children)}
     </button>
   );
 }
 
 export function OutlineButton({ children, height = 46, style, ...props }) {
+  const tr = useTr();
   return (
     <button
       className="cp-outline"
       style={{ height, padding: '0 18px', borderRadius: 999, border: `1.5px solid ${C.outline}`, background: 'transparent', fontSize: 14, fontWeight: 500, opacity: props.disabled ? 0.55 : 1, ...style }}
       {...props}
     >
-      {children}
+      {Array.isArray(children) ? children : tr(children)}
     </button>
   );
 }
 
 export function SoftButton({ children, height = 44, style, ...props }) {
+  const tr = useTr();
   return (
     <button style={{ height, padding: '0 18px', borderRadius: 999, background: C.surface, fontSize: 14, fontWeight: 500, ...style }} {...props}>
-      {children}
+      {tr(children)}
     </button>
   );
 }
@@ -156,24 +174,32 @@ export function Card({ children, tone = 'surface', style, ...props }) {
   );
 }
 
-export function Label({ children, style }) {
-  return <label style={{ fontSize: 13, fontWeight: 600, ...style }}>{children}</label>;
+export function Label({ children, style, ...props }) {
+  const tr = useTr();
+  return (
+    <label style={{ fontSize: 13, fontWeight: 600, ...style }} {...props}>
+      {tr(children)}
+    </label>
+  );
 }
 
 export function ErrorText({ children }) {
+  const tr = useTr();
   if (!children) return null;
   return (
     <span role="alert" style={{ fontSize: 12.5, color: C.error }}>
-      {children}
+      {tr(children)}
     </span>
   );
 }
 
 export function Hint({ children }) {
-  return <span style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.4 }}>{children}</span>;
+  const tr = useTr();
+  return <span style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.4 }}>{tr(children)}</span>;
 }
 
 export function Banner({ tone = 'error', children, style }) {
+  const tr = useTr();
   const tones = {
     error: { background: C.errorBg, color: C.errorSoft },
     warn: { background: C.warnBg, color: C.warn },
@@ -182,7 +208,7 @@ export function Banner({ tone = 'error', children, style }) {
   };
   return (
     <div role={tone === 'error' ? 'alert' : 'status'} style={{ borderRadius: 16, padding: '12px 14px', fontSize: 13.5, lineHeight: 1.45, ...tones[tone], ...style }}>
-      {children}
+      {tr(children)}
     </div>
   );
 }
@@ -246,8 +272,9 @@ const CHIP = {
 };
 
 export function Chip({ tone = 'neutral', children }) {
+  const tr = useTr();
   const [bg, fg] = CHIP[tone];
-  return <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 999, background: bg, color: fg, whiteSpace: 'nowrap' }}>{children}</span>;
+  return <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 999, background: bg, color: fg, whiteSpace: 'nowrap' }}>{tr(children)}</span>;
 }
 
 export function Skeleton({ height = 100, radius = 22 }) {
@@ -256,10 +283,11 @@ export function Skeleton({ height = 100, radius = 22 }) {
 
 /** Page title block used at the top of most screens. */
 export function PageTitle({ children, sub }) {
+  const tr = useTr();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <Heading>{children}</Heading>
-      {sub && <span style={{ fontSize: 14, color: C.soft, lineHeight: 1.5 }}>{sub}</span>}
+      {sub && <span style={{ fontSize: 14, color: C.soft, lineHeight: 1.5 }}>{tr(sub)}</span>}
     </div>
   );
 }

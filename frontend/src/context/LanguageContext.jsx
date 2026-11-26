@@ -1,5 +1,5 @@
-import { createContext, useContext, useState } from 'react';
-import { DEFAULT_LANGUAGE, LANGUAGES, uiText } from '../i18n/strings';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { DEFAULT_LANGUAGE, LANGUAGES, LOCALES, uiText } from '../i18n/strings';
 
 const LanguageContext = createContext(null);
 const STORAGE_KEY = 'ceylonpay_lang';
@@ -17,6 +17,10 @@ function initialLanguage() {
 export function LanguageProvider({ children }) {
   const [lang, setLangState] = useState(initialLanguage);
 
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
   function setLang(code) {
     setLangState(code);
     try {
@@ -26,9 +30,10 @@ export function LanguageProvider({ children }) {
     }
   }
 
-  const t = (key) => uiText(lang, key);
+  const t = (key, vars) => uiText(lang, key, vars);
+  const locale = LOCALES[lang] || LOCALES[DEFAULT_LANGUAGE];
 
-  return <LanguageContext.Provider value={{ lang, setLang, t }}>{children}</LanguageContext.Provider>;
+  return <LanguageContext.Provider value={{ lang, setLang, t, locale }}>{children}</LanguageContext.Provider>;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

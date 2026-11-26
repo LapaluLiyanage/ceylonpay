@@ -4,10 +4,12 @@ import { AppShell } from '../components/AppShell';
 import { deposit } from '../api/wallet';
 import { ApiError } from '../api/client';
 import { formatMoney, parseAmountInput } from '../utils/money';
+import { useLanguage } from '../context/LanguageContext';
 import { AmountBox, Banner, Card, ErrorText, Hint, Label, OutlineButton, PageTitle, PrimaryButton, C, display } from '../components/ui';
 
 export default function Deposit() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [netError, setNetError] = useState(false);
@@ -85,13 +87,13 @@ export default function Deposit() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 10, marginTop: 4, borderTop: `1px solid ${C.line}`, fontSize: 12.5, color: C.muted }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent }} />
-                From: External Funding Source (simulated)
+                {t('From: External Funding Source (simulated)')}
               </div>
             </Card>
             {netError && (
               <Banner>
-                <b style={{ display: 'block', marginBottom: 4 }}>Deposit didn&apos;t go through</b>
-                We couldn&apos;t reach the server. Nothing was added to your wallet. Try again in a moment.
+                <b style={{ display: 'block', marginBottom: 4 }}>{t("Deposit didn't go through")}</b>
+                {t("We couldn't reach the server. Nothing was added to your wallet. Try again in a moment.")}
               </Banner>
             )}
             <div style={{ display: 'flex', gap: 10 }}>
@@ -109,9 +111,9 @@ export default function Deposit() {
           <>
             <Card tone="dark" style={{ borderRadius: 28, padding: 24, display: 'flex', flexDirection: 'column', gap: 14, marginTop: 20 }}>
               <span style={{ width: 54, height: 54, borderRadius: '50%', background: C.accent, display: 'grid', placeItems: 'center', fontSize: 24 }} aria-hidden="true">✓</span>
-              <span style={{ ...display, fontSize: 24, lineHeight: 1.2, textTransform: 'uppercase' }}>Deposited {formatMoney(depositedAmount)}</span>
+              <span style={{ ...display, fontSize: 24, lineHeight: 1.2, textTransform: 'uppercase' }}>{t('Deposited {amount}', { amount: formatMoney(depositedAmount) })}</span>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,.15)', paddingTop: 14, fontSize: 14 }}>
-                <span style={{ color: '#CFCAC2' }}>New balance</span>
+                <span style={{ color: '#CFCAC2' }}>{t('New balance')}</span>
                 <b>{formatMoney(newBalance)}</b>
               </div>
             </Card>

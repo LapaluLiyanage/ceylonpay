@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { C, mono } from './ui';
+import { useLanguage } from '../context/LanguageContext';
 
 const LETTERS = 'CEYLONPAY'.split('');
 const EXIT_AT = 2.9; // seconds into the timeline where the exit starts
@@ -12,6 +13,7 @@ const EXIT_AT = 2.9; // seconds into the timeline where the exit starts
  * `onDone` fires once the screen has left.
  */
 export function Splash({ onDone }) {
+  const { t } = useLanguage();
   const rootRef = useRef(null);
   const timelineRef = useRef(null);
 
@@ -104,7 +106,7 @@ export function Splash({ onDone }) {
         ))}
         <span data-a="ch" style={{ display: 'inline-block', color: C.accent }}>.</span>
       </div>
-      <span data-a="tag" style={{ fontSize: 13, color: C.soft, letterSpacing: '.2em', textTransform: 'uppercase', textAlign: 'center', padding: '0 24px' }}>Scam-safe payments for Sri Lanka</span>
+      <span data-a="tag" style={{ fontSize: 13, color: C.soft, letterSpacing: '.2em', textTransform: 'uppercase', textAlign: 'center', padding: '0 24px' }}>{t('Scam-safe payments for Sri Lanka')}</span>
       <div style={{ position: 'absolute', left: 32, right: 32, bottom: 40, display: 'flex', justifyContent: 'space-between', ...mono, fontSize: 12, color: C.soft }}>
         <span>English · සිංහල · தமிழ்</span>
         <span data-a="count">000</span>

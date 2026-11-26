@@ -4,12 +4,15 @@ import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../api/client';
 import { digitsOnly, groupPhone, phoneError } from '../utils/phone';
 import { AuthSplitLayout, AuthSwitch } from '../components/AuthSplitLayout';
-import { Banner, ErrorText, Heading, Hint, Label, Pill, PhoneBox, PrimaryButton, TextInput } from '../components/ui';
+import { Banner, ErrorText, Heading, Hint, Label, PhoneBox, PrimaryButton, Rich, TextInput } from '../components/ui';
+import { useLanguage } from '../context/LanguageContext';
+import { msg } from '../i18n/strings';
 
 const NIC_PATTERN = /^(\d{12}|\d{9}[VX])$/;
 
 export default function Register() {
   const { register } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -29,14 +32,14 @@ export default function Register() {
     if (busy) return;
 
     const errors = {};
-    if (!name.trim()) errors.name = 'Enter your full name, as on your NIC.';
+    if (!name.trim()) errors.name = msg('Enter your full name, as on your NIC.');
     const pe = phoneError(phone);
     if (pe) errors.phone = pe;
     const nicValue = nic.trim().toUpperCase();
-    if (!nicValue) errors.nic = 'Enter your NIC number.';
-    else if (!NIC_PATTERN.test(nicValue)) errors.nic = 'NIC is 12 digits, or 9 digits ending in V.';
-    if (password.length < 6) errors.password = 'Use at least 6 characters for your password.';
-    else if (password !== confirmPassword) errors.password = 'The two passwords do not match.';
+    if (!nicValue) errors.nic = msg('Enter your NIC number.');
+    else if (!NIC_PATTERN.test(nicValue)) errors.nic = msg('NIC is 12 digits, or 9 digits ending in V.');
+    if (password.length < 6) errors.password = msg('Use at least 6 characters for your password.');
+    else if (password !== confirmPassword) errors.password = msg('The two passwords do not match.');
 
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
@@ -54,7 +57,7 @@ export default function Register() {
       if (err instanceof ApiError && err.status === 400) {
         setAuthError(err.message);
       } else {
-        setAuthError("Couldn't reach CeylonPay. Your account was not created — try again.");
+        setAuthError(msg("Couldn't reach CeylonPay. Your account was not created — try again."));
       }
     } finally {
       setBusy(false);
@@ -64,10 +67,10 @@ export default function Register() {
   return (
     <AuthSplitLayout
       action={<AuthSwitch onClick={() => navigate('/login')}>Log in</AuthSwitch>}
-      heroLabel="Starts at Rs. 0.00 · no fees"
+      heroLabel={msg('Starts at Rs. 0.00 · no fees')}
     >
       <Heading size={28} style={{ margin: '4px 0 0' }}>
-        Create your <Pill>wallet</Pill>
+        <Rich text={t('Create your [wallet]')} />
       </Heading>
       {authError && <Banner>{authError}</Banner>}
       <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -142,7 +145,7 @@ export default function Register() {
         </PrimaryButton>
       </form>
       <p style={{ margin: 0, textAlign: 'center', fontSize: 13.5, color: '#C9BCB0' }}>
-        Already have a wallet? <Link to="/login">Log in</Link>
+        {t('Already have a wallet?')} <Link to="/login">{t('Log in')}</Link>
       </p>
     </AuthSplitLayout>
   );

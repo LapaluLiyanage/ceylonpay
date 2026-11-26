@@ -141,3 +141,12 @@ textarea:focus {
 .wl-swap {
   animation: cp-rise 0.45s ease both;
 }
+
+/* Browser autofill would paint inputs pale blue; hold the app's own colours instead. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f4eee8;
+  caret-color: #f4eee8;
+  transition: background-color 600000s 0s, color 600000s 0s;
+}

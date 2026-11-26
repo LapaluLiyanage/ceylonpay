@@ -57,6 +57,34 @@ describe('request', () => {
       .rejects.toMatchObject({ status: 500, message: 'Something went wrong. Please try again.' });
   });
 
+  it('reports a gateway error page as "server is waking up" instead of failing to parse it', async () => {
+    for (const status of [502, 503, 504]) {
+      global.fetch.mockResolvedValueOnce({ ok: false, status, text: async () => '<html><body>Gateway Timeout</body></html>' });
+      await expect(request('/api/wallet/balance')).rejects.toMatchObject({ status, code: 'GATEWAY', message: expect.stringContaining('waking up') });
+    }
+  });
+
+  it('does not crash on a non-JSON error body from some other status', async () => {
+    global.fetch.mockResolvedValue({ ok: false, status: 500, text: async () => '<html>oops</html>' });
+
+    await expect(request('/api/wallet/balance')).rejects.toMatchObject({ status: 500, message: 'Something went wrong. Please try again.' });
+  });
+
+  it('treats a request that never answers as a gateway timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      global.fetch.mockImplementation((url, options) => new Promise((resolve, reject) => {
+        options.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+      }));
+      const pending = request('/api/wallet/balance');
+      const assertion = expect(pending).rejects.toMatchObject({ status: 504, code: 'GATEWAY' });
+      await vi.advanceTimersByTimeAsync(66000);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('sends the request body as JSON', async () => {
     global.fetch.mockResolvedValue({ ok: true, text: async () => '{}' });
 

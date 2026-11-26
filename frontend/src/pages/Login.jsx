@@ -44,6 +44,8 @@ export default function Login() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setAuthError(msg('Wrong phone number or password. Try again.'));
+      } else if (err instanceof ApiError && err.code === 'GATEWAY') {
+        setAuthError(err.message);
       } else {
         setAuthError(msg("Couldn't reach CeylonPay. Check your connection and try again."));
       }

@@ -54,7 +54,7 @@ export default function Register() {
       const session = await register({ name: name.trim(), phone: digitsOnly(phone), nic: nicValue, password });
       navigate(session.phoneVerified === false ? '/verify' : '/dashboard');
     } catch (err) {
-      if (err instanceof ApiError && err.status === 400) {
+      if (err instanceof ApiError && (err.status === 400 || err.code === 'GATEWAY')) {
         setAuthError(err.message);
       } else {
         setAuthError(msg("Couldn't reach CeylonPay. Your account was not created — try again."));

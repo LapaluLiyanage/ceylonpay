@@ -86,8 +86,8 @@ export function AuthSplitLayout({ children, action, heroLabel, heroHeight = 170 
     return (
       <div style={{ minHeight: '100vh', display: 'flex' }}>
         <DesktopHero />
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: '48px 40px 40px' }}>
-          <div style={{ width: '100%', maxWidth: 440, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14, animation: 'cp-rise .35s ease both' }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px' }}>
+          <div style={{ width: '100%', maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14, animation: 'cp-rise .35s ease both' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
               <Logo size={28} fontSize={14} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

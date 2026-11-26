@@ -39,7 +39,7 @@ function ScoreExplainer() {
 function DesktopHero() {
   return (
     <div style={{ position: 'relative', flex: 1.3, margin: '16px 0 16px 16px', borderRadius: 32, overflow: 'hidden', background: 'radial-gradient(120% 90% at 50% 35%, #6E4534 0%, #3A2419 58%, #1C130E 100%)' }}>
-      <Hero3D rotation={-0.35} offsetY={1.1} />
+      <Hero3D rotation={-0.35} />
       <div style={{ position: 'absolute', left: 32, top: 28, zIndex: 3 }}>
         <Logo size={30} fontSize={15} />
       </div>
@@ -80,8 +80,14 @@ export function AuthSplitLayout({ children, action, heroLabel, heroHeight = 170 
     return (
       <div style={{ minHeight: '100vh', display: 'flex' }}>
         <DesktopHero />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '48px 40px 40px' }}>
-          <div style={{ width: '100%', maxWidth: 440, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14, animation: 'cp-rise .35s ease both' }}>{children}</div>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: '48px 40px 40px' }}>
+          <div style={{ width: '100%', maxWidth: 440, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14, animation: 'cp-rise .35s ease both' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Logo size={28} fontSize={14} />
+              {action}
+            </div>
+            {children}
+          </div>
         </div>
       </div>
     );
